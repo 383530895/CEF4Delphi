@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,10 +37,12 @@
 
 unit uCEFDownLoadItem;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
@@ -165,8 +167,9 @@ end;
 
 class function TCefDownLoadItemRef.UnWrap(data: Pointer): ICefDownLoadItem;
 begin
-  if data <> nil then
-    Result := Create(data) as ICefDownLoadItem else
+  if (data <> nil) then
+    Result := Create(data) as ICefDownLoadItem
+   else
     Result := nil;
 end;
 

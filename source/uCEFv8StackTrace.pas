@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,10 +37,12 @@
 
 unit uCEFv8StackTrace;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
@@ -72,23 +74,24 @@ end;
 
 function TCefV8StackTraceRef.GetFrame(index: Integer): ICefV8StackFrame;
 begin
-  Result := TCefV8StackFrameRef.UnWrap(PCefV8StackTrace(FData).get_frame(FData, index));
+  Result := TCefV8StackFrameRef.UnWrap(PCefV8StackTrace(FData)^.get_frame(PCefV8StackTrace(FData), index));
 end;
 
 function TCefV8StackTraceRef.GetFrameCount: Integer;
 begin
-  Result := PCefV8StackTrace(FData).get_frame_count(FData);
+  Result := PCefV8StackTrace(FData)^.get_frame_count(PCefV8StackTrace(FData));
 end;
 
 function TCefV8StackTraceRef.IsValid: Boolean;
 begin
-  Result := PCefV8StackTrace(FData).is_valid(FData) <> 0;
+  Result := PCefV8StackTrace(FData)^.is_valid(PCefV8StackTrace(FData)) <> 0;
 end;
 
 class function TCefV8StackTraceRef.UnWrap(data: Pointer): ICefV8StackTrace;
 begin
-  if data <> nil then
-    Result := Create(data) as ICefV8StackTrace else
+  if (data <> nil) then
+    Result := Create(data) as ICefV8StackTrace
+   else
     Result := nil;
 end;
 

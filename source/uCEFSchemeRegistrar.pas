@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,10 +37,12 @@
 
 unit uCEFSchemeRegistrar;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
@@ -52,7 +54,7 @@ uses
 type
   TCefSchemeRegistrarRef = class(TCEFBaseScopedWrapperRef)
     public
-      function AddCustomScheme(const schemeName: ustring; IsStandard, IsLocal, IsDisplayIsolated, IsSecure, IsCorsEnabled, IsCSPBypassing: Boolean): Boolean; stdcall;
+      function AddCustomScheme(const schemeName: ustring; options : TCefSchemeOptions): Boolean;
   end;
 
 implementation
@@ -60,19 +62,15 @@ implementation
 uses
   uCEFMiscFunctions;
 
-function TCefSchemeRegistrarRef.AddCustomScheme(const schemeName: ustring; IsStandard, IsLocal, IsDisplayIsolated, IsSecure, IsCorsEnabled, IsCSPBypassing: Boolean): Boolean;
+function TCefSchemeRegistrarRef.AddCustomScheme(const schemeName : ustring;
+                                                      options    : TCefSchemeOptions): Boolean;
 var
-  sn: TCefString;
+  TempName : TCefString;
 begin
-  sn     := CefString(schemeName);
-  Result := PCefSchemeRegistrar(FData).add_custom_scheme(PCefSchemeRegistrar(FData),
-                                                         @sn,
-                                                         Ord(IsStandard),
-                                                         Ord(IsLocal),
-                                                         Ord(IsDisplayIsolated),
-                                                         Ord(isSecure),
-                                                         Ord(IsCorsEnabled),
-                                                         Ord(IsCSPBypassing)) <> 0;
+  TempName := CefString(schemeName);
+  Result   := PCefSchemeRegistrar(FData)^.add_custom_scheme(PCefSchemeRegistrar(FData),
+                                                            @TempName,
+                                                            options) <> 0;
 end;
 
 end.

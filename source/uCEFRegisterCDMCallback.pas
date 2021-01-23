@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,21 +37,21 @@
 
 unit uCEFRegisterCDMCallback;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
 interface
 
 uses
-  uCEFBaseRefCounted, uCEFInterfaces, uCEFTypes;
+  uCEFBaseRefCounted, uCEFInterfaces, uCEFTypes, uCEFApplicationCore;
 
 type
-  TCefRegisterCDMProc = {$IFDEF DELPHI12_UP}reference to{$ENDIF} procedure(result: TCefCDMRegistrationError; const error_message: ustring);
-
   TCefRegisterCDMCallbackOwn = class(TCefBaseRefCountedOwn, ICefRegisterCDMCallback)
     protected
       procedure OnCDMRegistrationComplete(result: TCefCDMRegistrationError; const error_message: ustring); virtual;
@@ -70,26 +70,52 @@ type
       constructor Create(const callback: TCefRegisterCDMProc); reintroduce;
   end;
 
+  TCefCustomRegisterCDMCallback = class(TCefRegisterCDMCallbackOwn)
+    protected
+      FCefApp : TCefApplicationCore;
+
+      procedure OnCDMRegistrationComplete(result: TCefCDMRegistrationError; const error_message: ustring); override;
+
+    public
+      constructor Create(const aCefApp : TCefApplicationCore); reintroduce;
+      destructor  Destroy; override;
+  end;
+
 implementation
 
 uses
+  {$IFDEF DELPHI16_UP}
+  System.SysUtils,
+  {$ELSE}
+  SysUtils,
+  {$ENDIF}
   uCEFMiscFunctions, uCEFLibFunctions;
 
-procedure cef_register_cdm_callback_on_cdm_registration_complete(self:PCefRegisterCDMCallback;
-                                                                 result: TCefCDMRegistrationError;
-                                                                 const error_message: PCefString); stdcall;
-begin
-  with TCefRegisterCDMCallbackOwn(CefGetObject(self)) do
-    OnCDMRegistrationComplete(result, CefString(error_message));
-end;
 
-// TCefRegisterCDMCallbackOwn
+// ************************************************
+// ********** TCefRegisterCDMCallbackOwn **********
+// ************************************************
+
+
+procedure cef_register_cdm_callback_on_cdm_registration_complete(      self          : PCefRegisterCDMCallback;
+                                                                       result        : TCefCDMRegistrationError;
+                                                                 const error_message : PCefString); stdcall;
+var
+  TempObject : TObject;
+begin
+  TempObject := CefGetObject(self);
+
+  if (TempObject <> nil) and (TempObject is TCefRegisterCDMCallbackOwn) then
+    TCefRegisterCDMCallbackOwn(TempObject).OnCDMRegistrationComplete(result,
+                                                                     CefString(error_message));
+end;
 
 constructor TCefRegisterCDMCallbackOwn.Create;
 begin
   inherited CreateData(SizeOf(TCefRegisterCDMCallback));
 
-  PCefRegisterCDMCallback(FData).on_cdm_registration_complete := cef_register_cdm_callback_on_cdm_registration_complete;
+  with PCefRegisterCDMCallback(FData)^ do
+    on_cdm_registration_complete := {$IFDEF FPC}@{$ENDIF}cef_register_cdm_callback_on_cdm_registration_complete;
 end;
 
 procedure TCefRegisterCDMCallbackOwn.OnCDMRegistrationComplete(result: TCefCDMRegistrationError;
@@ -98,7 +124,11 @@ begin
   //
 end;
 
-// TCefFastRegisterCDMCallback
+
+// ************************************************
+// ********** TCefFastRegisterCDMCallback *********
+// ************************************************
+
 
 constructor TCefFastRegisterCDMCallback.Create(const callback: TCefRegisterCDMProc);
 begin
@@ -109,6 +139,37 @@ procedure TCefFastRegisterCDMCallback.OnCDMRegistrationComplete(result: TCefCDMR
                                                                 const error_message: ustring);
 begin
   FCallback(result, error_message);
+end;
+
+
+// ************************************************
+// ******** TCefCustomRegisterCDMCallback *********
+// ************************************************
+
+
+constructor TCefCustomRegisterCDMCallback.Create(const aCefApp : TCefApplicationCore);
+begin
+  inherited Create;
+
+  FCefApp := aCefApp;
+end;
+
+destructor TCefCustomRegisterCDMCallback.Destroy;
+begin
+  FCefApp := nil;
+
+  inherited Destroy;
+end;
+
+procedure TCefCustomRegisterCDMCallback.OnCDMRegistrationComplete(      result        : TCefCDMRegistrationError;
+                                                                  const error_message : ustring);
+begin
+  try
+    if (FCefApp <> nil) then FCefApp.Internal_OnCDMRegistrationComplete(result, error_message);
+  except
+    on e : exception do
+      if CustomExceptionHandler('TCefCustomRegisterCDMCallback.OnCDMRegistrationComplete', e) then raise;
+  end;
 end;
 
 

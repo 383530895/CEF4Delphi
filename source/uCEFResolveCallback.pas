@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,10 +37,12 @@
 
 unit uCEFResolveCallback;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
@@ -58,49 +60,49 @@ type
   TCefResolveCallbackOwn = class(TCefBaseRefCountedOwn, ICefResolveCallback)
     protected
       procedure OnResolveCompleted(result: TCefErrorCode; const resolvedIps: TStrings); virtual; abstract;
+
     public
       constructor Create; virtual;
   end;
 
   TCefCustomResolveCallback = class(TCefResolveCallbackOwn)
     protected
-      FChromiumBrowser : TObject;
+      FEvents : Pointer;
+
       procedure OnResolveCompleted(result: TCefErrorCode; const resolvedIps: TStrings); override;
 
     public
-      constructor Create(const aChromiumBrowser : TObject); reintroduce;
+      constructor Create(const aEvents : IChromiumEvents); reintroduce;
+      destructor  Destroy; override;
   end;
 
 implementation
 
 uses
-  uCEFMiscFunctions, uCEFLibFunctions, uCEFChromium;
+  uCEFMiscFunctions, uCEFLibFunctions, uCEFStringList;
 
-procedure cef_resolve_callback_on_resolve_completed(self: PCefResolveCallback;
-                                                    result: TCefErrorCode;
-                                                    resolved_ips: TCefStringList); stdcall;
+procedure cef_resolve_callback_on_resolve_completed(self         : PCefResolveCallback;
+                                                    result       : TCefErrorCode;
+                                                    resolved_ips : TCefStringList); stdcall;
 var
-  TempSL : TStringList;
-  i, j : Integer;
-  str: TCefString;
+  TempSL     : TStringList;
+  TempCefSL  : ICefStringList;
+  TempObject : TObject;
 begin
   TempSL := nil;
 
   try
     try
-      TempSL := TStringList.Create;
-      i      := 0;
-      j      := cef_string_list_size(resolved_ips);
+      TempObject := CefGetObject(self);
 
-      while (i < j) do
+      if (TempObject <> nil) and (TempObject is TCefResolveCallbackOwn) then
         begin
-          FillChar(str, SizeOf(str), 0);
-          cef_string_list_value(resolved_ips, i, @str);
-          TempSL.Add(CefStringClearAndGet(str));
-          inc(i);
-        end;
+          TempSL    := TStringList.Create;
+          TempCefSL := TCefStringListRef.Create(resolved_ips);
+          TempCefSL.CopyToStrings(TempSL);
 
-      TCefResolveCallbackOwn(CefGetObject(self)).OnResolveCompleted(result, TempSL);
+          TCefResolveCallbackOwn(TempObject).OnResolveCompleted(result, TempSL);
+        end;
     except
       on e : exception do
         if CustomExceptionHandler('cef_resolve_callback_on_resolve_completed', e) then raise;
@@ -114,25 +116,40 @@ end;
 
 constructor TCefResolveCallbackOwn.Create;
 begin
-  CreateData(SizeOf(TCefResolveCallback), False);
+  inherited CreateData(SizeOf(TCefResolveCallback));
 
   with PCefResolveCallback(FData)^ do
-    on_resolve_completed := cef_resolve_callback_on_resolve_completed;
+    on_resolve_completed := {$IFDEF FPC}@{$ENDIF}cef_resolve_callback_on_resolve_completed;
 end;
 
 // TCefCustomResolveCallback
 
-constructor TCefCustomResolveCallback.Create(const aChromiumBrowser : TObject);
+constructor TCefCustomResolveCallback.Create(const aEvents : IChromiumEvents);
 begin
   inherited Create;
 
-  FChromiumBrowser := aChromiumBrowser;
+  FEvents := Pointer(aEvents);
+end;
+
+destructor TCefCustomResolveCallback.Destroy;
+begin
+  FEvents := nil;
+
+  inherited Destroy;
 end;
 
 procedure TCefCustomResolveCallback.OnResolveCompleted(result: TCefErrorCode; const resolvedIps: TStrings);
 begin
-  if (FChromiumBrowser <> nil) and (FChromiumBrowser is TChromium) then
-    TChromium(FChromiumBrowser).Internal_ResolvedHostAvailable(result, resolvedIps);
+  try
+    try
+      if (FEvents <> nil) then IChromiumEvents(FEvents).doResolvedHostAvailable(result, resolvedIps);
+    except
+      on e : exception do
+        if CustomExceptionHandler('TCefCustomResolveCallback.OnResolveCompleted', e) then raise;
+    end;
+  finally
+    FEvents := nil;
+  end;
 end;
 
 end.

@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,10 +37,12 @@
 
 unit uCEFWaitableEvent;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
@@ -60,7 +62,7 @@ type
 
     public
       class function UnWrap(data: Pointer): ICefWaitableEvent;
-      class function New(automatic_reset, initially_signaled : integer): ICefWaitableEvent;
+      class function New(automatic_reset, initially_signaled : boolean): ICefWaitableEvent;
   end;
 
 implementation
@@ -70,27 +72,27 @@ uses
 
 procedure TCefWaitableEventRef.Reset;
 begin
-  PCefWaitableEvent(FData).reset(FData);
+  PCefWaitableEvent(FData)^.reset(PCefWaitableEvent(FData));
 end;
 
 procedure TCefWaitableEventRef.Signal;
 begin
-  PCefWaitableEvent(FData).signal(FData);
+  PCefWaitableEvent(FData)^.signal(PCefWaitableEvent(FData));
 end;
 
 function TCefWaitableEventRef.IsSignaled : boolean;
 begin
-  Result := (PCefWaitableEvent(FData).is_signaled(FData) <> 0);
+  Result := (PCefWaitableEvent(FData)^.is_signaled(PCefWaitableEvent(FData)) <> 0);
 end;
 
 procedure TCefWaitableEventRef.Wait;
 begin
-  PCefWaitableEvent(FData).wait(FData);
+  PCefWaitableEvent(FData)^.wait(PCefWaitableEvent(FData));
 end;
 
 function TCefWaitableEventRef.TimedWait(max_ms: int64): boolean;
 begin
-  Result := (PCefWaitableEvent(FData).timed_wait(FData, max_ms) <> 0);
+  Result := (PCefWaitableEvent(FData)^.timed_wait(PCefWaitableEvent(FData), max_ms) <> 0);
 end;
 
 class function TCefWaitableEventRef.UnWrap(data: Pointer): ICefWaitableEvent;
@@ -101,9 +103,9 @@ begin
     Result := nil;
 end;
 
-class function TCefWaitableEventRef.New(automatic_reset, initially_signaled : integer): ICefWaitableEvent;
+class function TCefWaitableEventRef.New(automatic_reset, initially_signaled : boolean): ICefWaitableEvent;
 begin
-  Result := UnWrap(cef_waitable_event_create(automatic_reset, initially_signaled));
+  Result := UnWrap(cef_waitable_event_create(Ord(automatic_reset), Ord(initially_signaled)));
 end;
 
 end.

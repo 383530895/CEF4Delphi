@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,10 +37,12 @@
 
 unit uCEFDialogHandler;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
@@ -57,7 +59,9 @@ uses
 type
   TCefDialogHandlerOwn = class(TCefBaseRefCountedOwn, ICefDialogHandler)
     protected
-      function OnFileDialog(const browser: ICefBrowser; mode: TCefFileDialogMode; const title, defaultFilePath: ustring; acceptFilters: TStrings; selectedAcceptFilter: Integer; const callback: ICefFileDialogCallback): Boolean; virtual;
+      function  OnFileDialog(const browser: ICefBrowser; mode: TCefFileDialogMode; const title, defaultFilePath: ustring; const acceptFilters: TStrings; selectedAcceptFilter: Integer; const callback: ICefFileDialogCallback): Boolean; virtual;
+
+      procedure RemoveReferences; virtual;
 
     public
       constructor Create; virtual;
@@ -65,88 +69,128 @@ type
 
   TCustomDialogHandler = class(TCefDialogHandlerOwn)
     protected
-      FEvent: IChromiumEvents;
+      FEvents : Pointer;
 
-      function OnFileDialog(const browser: ICefBrowser; mode: TCefFileDialogMode; const title: ustring; const defaultFilePath: ustring; acceptFilters: TStrings; selectedAcceptFilter: Integer; const callback: ICefFileDialogCallback): Boolean; override;
+      function  OnFileDialog(const browser: ICefBrowser; mode: TCefFileDialogMode; const title: ustring; const defaultFilePath: ustring; const acceptFilters: TStrings; selectedAcceptFilter: Integer; const callback: ICefFileDialogCallback): Boolean; override;
+
+      procedure RemoveReferences; override;
 
     public
-      constructor Create(const events: IChromiumEvents); reintroduce; virtual;
+      constructor Create(const events : IChromiumEvents); reintroduce; virtual;
       destructor  Destroy; override;
   end;
 
 implementation
 
 uses
-  uCEFMiscFunctions, uCEFLibFunctions, uCEFBrowser, uCEFFileDialogCallback;
+  {$IFDEF DELPHI16_UP}
+  System.SysUtils,
+  {$ELSE}
+  SysUtils,
+  {$ENDIF}
+  uCEFMiscFunctions, uCEFLibFunctions, uCEFBrowser, uCEFFileDialogCallback, uCEFStringList;
 
-function cef_dialog_handler_on_file_dialog(self: PCefDialogHandler; browser: PCefBrowser;
-  mode: TCefFileDialogMode; const title, default_file_path: PCefString;
-  accept_filters: TCefStringList; selected_accept_filter: Integer;
-  callback: PCefFileDialogCallback): Integer; stdcall;
+function cef_dialog_handler_on_file_dialog(self                    : PCefDialogHandler;
+                                           browser                 : PCefBrowser;
+                                           mode                    : TCefFileDialogMode;
+                                           const title             : PCefString;
+                                           const default_file_path : PCefString;
+                                           accept_filters          : TCefStringList;
+                                           selected_accept_filter  : Integer;
+                                           callback                : PCefFileDialogCallback): Integer; stdcall;
 var
-  list: TStringList;
-  i: Integer;
-  str: TCefString;
+  TempSL     : TStringList;
+  TempCefSL  : ICefStringList;
+  TempObject : TObject;
 begin
-  list := TStringList.Create;
-  try
-    for i := 0 to cef_string_list_size(accept_filters) - 1 do
-    begin
-      FillChar(str, SizeOf(str), 0);
-      cef_string_list_value(accept_filters, i, @str);
-      list.Add(CefStringClearAndGet(str));
-    end;
+  TempSL := nil;
+  Result := Ord(False);
 
-    with TCefDialogHandlerOwn(CefGetObject(self)) do
-      Result := Ord(OnFileDialog(TCefBrowserRef.UnWrap(browser), mode, CefString(title),
-        CefString(default_file_path), list, selected_accept_filter,
-        TCefFileDialogCallbackRef.UnWrap(callback)));
+  try
+    try
+      TempObject := CefGetObject(self);
+
+      if (TempObject <> nil) and (TempObject is TCefDialogHandlerOwn) then
+        begin
+          TempSL    := TStringList.Create;
+          TempCefSL := TCefStringListRef.Create(accept_filters);
+          TempCefSL.CopyToStrings(TempSL);
+
+          Result := Ord(TCefDialogHandlerOwn(TempObject).OnFileDialog(TCefBrowserRef.UnWrap(browser),
+                                                                      mode,
+                                                                      CefString(title),
+                                                                      CefString(default_file_path),
+                                                                      TempSL,
+                                                                      selected_accept_filter,
+                                                                      TCefFileDialogCallbackRef.UnWrap(callback)));
+        end;
+    except
+      on e : exception do
+        if CustomExceptionHandler('cef_dialog_handler_on_file_dialog', e) then raise;
+    end;
   finally
-    list.Free;
+    if (TempSL <> nil) then FreeAndNil(TempSL);
   end;
 end;
 
 constructor TCefDialogHandlerOwn.Create;
 begin
-  CreateData(SizeOf(TCefDialogHandler));
+  inherited CreateData(SizeOf(TCefDialogHandler));
 
-  with PCefDialogHandler(FData)^ do
-    on_file_dialog := cef_dialog_handler_on_file_dialog;
+  PCefDialogHandler(FData)^.on_file_dialog := {$IFDEF FPC}@{$ENDIF}cef_dialog_handler_on_file_dialog;
 end;
 
-function TCefDialogHandlerOwn.OnFileDialog(const browser: ICefBrowser; mode: TCefFileDialogMode; const title, defaultFilePath: ustring; acceptFilters: TStrings; selectedAcceptFilter: Integer; const callback: ICefFileDialogCallback): Boolean;
+function TCefDialogHandlerOwn.OnFileDialog(const browser                : ICefBrowser;
+                                                 mode                   : TCefFileDialogMode;
+                                           const title                  : ustring;
+                                           const defaultFilePath        : ustring;
+                                           const acceptFilters          : TStrings;
+                                                 selectedAcceptFilter   : Integer;
+                                           const callback               : ICefFileDialogCallback): Boolean;
 begin
   Result := False;
 end;
 
+procedure TCefDialogHandlerOwn.RemoveReferences;
+begin
+  //
+end;
+
 // TCustomDialogHandler
 
-constructor TCustomDialogHandler.Create(const events: IChromiumEvents);
+constructor TCustomDialogHandler.Create(const events : IChromiumEvents);
 begin
   inherited Create;
 
-  FEvent := events;
+  FEvents := Pointer(events);
 end;
 
 destructor TCustomDialogHandler.Destroy;
 begin
-  FEvent := nil;
+  RemoveReferences;
 
   inherited Destroy;
+end;
+
+procedure TCustomDialogHandler.RemoveReferences;
+begin
+  FEvents := nil;
 end;
 
 function TCustomDialogHandler.OnFileDialog(const browser              : ICefBrowser;
                                                  mode                 : TCefFileDialogMode;
                                            const title                : ustring;
                                            const defaultFilePath      : ustring;
-                                                 acceptFilters        : TStrings;
+                                           const acceptFilters        : TStrings;
                                                  selectedAcceptFilter : Integer;
                                            const callback             : ICefFileDialogCallback): Boolean;
 begin
-  if (FEvent <> nil) then
-    Result := FEvent.doOnFileDialog(browser, mode, title, defaultFilePath, acceptFilters, selectedAcceptFilter, callback)
+  if (FEvents <> nil) then
+    Result := IChromiumEvents(FEvents).doOnFileDialog(browser, mode, title, defaultFilePath,
+                                                      acceptFilters, selectedAcceptFilter, callback)
    else
-    Result := inherited OnFileDialog(browser, mode, title, defaultFilePath, acceptFilters, selectedAcceptFilter, callback);
+    Result := inherited OnFileDialog(browser, mode, title, defaultFilePath,
+                                     acceptFilters, selectedAcceptFilter, callback);
 end;
 
 end.

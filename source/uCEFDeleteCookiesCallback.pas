@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,10 +37,12 @@
 
 unit uCEFDeleteCookiesCallback;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
@@ -66,26 +68,38 @@ type
 
     public
       constructor Create(const callback: TCefDeleteCookiesCallbackProc); reintroduce;
+      destructor  Destroy; override;
   end;
 
   TCefCustomDeleteCookiesCallback = class(TCefDeleteCookiesCallbackOwn)
     protected
-      FChromiumBrowser : TObject;
+      FEvents : Pointer;
 
       procedure OnComplete(numDeleted: Integer); override;
 
     public
-      constructor Create(const aChromiumBrowser : TObject); reintroduce;
+      constructor Create(const aEvents : IChromiumEvents); reintroduce;
+      destructor  Destroy; override;
   end;
 
 implementation
 
 uses
-  uCEFMiscFunctions, uCEFLibFunctions, uCEFChromium;
+  {$IFDEF DELPHI16_UP}
+  System.SysUtils,
+  {$ELSE}
+  SysUtils,
+  {$ENDIF}
+  uCEFMiscFunctions, uCEFLibFunctions;
 
 procedure cef_delete_cookie_callback_on_complete(self: PCefDeleteCookiesCallback; num_deleted: Integer); stdcall;
+var
+  TempObject  : TObject;
 begin
-  with TCefDeleteCookiesCallbackOwn(CefGetObject(self)) do OnComplete(num_deleted);
+  TempObject  := CefGetObject(self);
+
+  if (TempObject <> nil) and (TempObject is TCefDeleteCookiesCallbackOwn) then
+    TCefDeleteCookiesCallbackOwn(TempObject).OnComplete(num_deleted);
 end;
 
 // TCefDeleteCookiesCallbackOwn
@@ -94,7 +108,7 @@ constructor TCefDeleteCookiesCallbackOwn.Create;
 begin
   inherited CreateData(SizeOf(TCefDeleteCookiesCallback));
 
-  with PCefDeleteCookiesCallback(FData)^ do on_complete := cef_delete_cookie_callback_on_complete;
+  PCefDeleteCookiesCallback(FData)^.on_complete := {$IFDEF FPC}@{$ENDIF}cef_delete_cookie_callback_on_complete;
 end;
 
 // TCefFastDeleteCookiesCallback
@@ -108,22 +122,44 @@ end;
 
 procedure TCefFastDeleteCookiesCallback.OnComplete(numDeleted: Integer);
 begin
-  FCallback(numDeleted)
+  if assigned(FCallback) then FCallback(numDeleted)
+end;
+
+destructor TCefFastDeleteCookiesCallback.Destroy;
+begin
+  FCallback := nil;
+
+  inherited Destroy;
 end;
 
 // TCefCustomDeleteCookiesCallback
 
-constructor TCefCustomDeleteCookiesCallback.Create(const aChromiumBrowser : TObject);
+constructor TCefCustomDeleteCookiesCallback.Create(const aEvents : IChromiumEvents);
 begin
   inherited Create;
 
-  FChromiumBrowser := aChromiumBrowser;
+  FEvents := Pointer(aEvents);
+end;
+
+destructor TCefCustomDeleteCookiesCallback.Destroy;
+begin
+  FEvents := nil;
+
+  inherited Destroy;
 end;
 
 procedure TCefCustomDeleteCookiesCallback.OnComplete(numDeleted: Integer);
 begin
-  if (FChromiumBrowser <> nil) and (FChromiumBrowser is TChromium) then
-    TChromium(FChromiumBrowser).Internal_CookiesDeleted(numDeleted);
+  try
+    try
+      if (FEvents <> nil) then IChromiumEvents(FEvents).doCookiesDeleted(numDeleted);
+    except
+      on e : exception do
+        if CustomExceptionHandler('TCefCustomDeleteCookiesCallback.OnComplete', e) then raise;
+    end;
+  finally
+    FEvents := nil;
+  end;
 end;
 
 end.

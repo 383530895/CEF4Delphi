@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,10 +37,12 @@
 
 unit uCEFv8Context;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
@@ -75,7 +77,7 @@ uses
 
 class function TCefv8ContextRef.Current: ICefv8Context;
 begin
-  Result := UnWrap(cef_v8context_get_current_context)
+  Result := UnWrap(cef_v8context_get_current_context());
 end;
 
 function TCefv8ContextRef.Enter: Boolean;
@@ -85,7 +87,7 @@ end;
 
 class function TCefv8ContextRef.Entered: ICefv8Context;
 begin
-  Result := UnWrap(cef_v8context_get_entered_context)
+  Result := UnWrap(cef_v8context_get_entered_context());
 end;
 
 function TCefv8ContextRef.Exit: Boolean;
@@ -110,7 +112,7 @@ end;
 
 function TCefv8ContextRef.GetTaskRunner: ICefTaskRunner;
 begin
-  Result := TCefTaskRunnerRef.UnWrap(PCefv8Context(FData)^.get_task_runner(FData));
+  Result := TCefTaskRunnerRef.UnWrap(PCefv8Context(FData)^.get_task_runner(PCefv8Context(FData)));
 end;
 
 function TCefv8ContextRef.IsSame(const that: ICefv8Context): Boolean;
@@ -120,14 +122,14 @@ end;
 
 function TCefv8ContextRef.IsValid: Boolean;
 begin
-  Result := PCefv8Context(FData)^.is_valid(FData) <> 0;
+  Result := PCefv8Context(FData)^.is_valid(PCefv8Context(FData)) <> 0;
 end;
 
-function TCefv8ContextRef.Eval(const code: ustring;
-                               const script_url: ustring;
-                                     start_line: integer;
-                               var   retval: ICefv8Value;
-                               var   exception: ICefV8Exception): Boolean;
+function TCefv8ContextRef.Eval(const code       : ustring;
+                               const script_url : ustring;
+                                     start_line : integer;
+                               var   retval     : ICefv8Value;
+                               var   exception  : ICefV8Exception): Boolean;
 var
   TempCode, TempScriptURL : TCefString;
   TempValue : PCefv8Value;

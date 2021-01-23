@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,10 +37,12 @@
 
 unit uCEFJsDialogCallback;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
@@ -51,10 +53,10 @@ uses
 
 type
   TCefJsDialogCallbackRef = class(TCefBaseRefCountedRef, ICefJsDialogCallback)
-  protected
-    procedure Cont(success: Boolean; const userInput: ustring);
-  public
-    class function UnWrap(data: Pointer): ICefJsDialogCallback;
+    protected
+      procedure Cont(success: Boolean; const userInput: ustring);
+    public
+      class function UnWrap(data: Pointer): ICefJsDialogCallback;
   end;
 
 
@@ -63,20 +65,19 @@ implementation
 uses
   uCEFMiscFunctions, uCEFLibFunctions;
 
-procedure TCefJsDialogCallbackRef.Cont(success: Boolean;
-  const userInput: ustring);
+procedure TCefJsDialogCallbackRef.Cont(success: Boolean; const userInput: ustring);
 var
-  ui: TCefString;
+  TempInput : TCefString;
 begin
-  ui := CefString(userInput);
-  PCefJsDialogCallback(FData).cont(PCefJsDialogCallback(FData), Ord(success), @ui);
+  TempInput := CefString(userInput);
+  PCefJsDialogCallback(FData)^.cont(PCefJsDialogCallback(FData), Ord(success), @TempInput);
 end;
 
-class function TCefJsDialogCallbackRef.UnWrap(
-  data: Pointer): ICefJsDialogCallback;
+class function TCefJsDialogCallbackRef.UnWrap(data: Pointer): ICefJsDialogCallback;
 begin
-  if data <> nil then
-    Result := Create(data) as ICefJsDialogCallback else
+  if (data <> nil) then
+    Result := Create(data) as ICefJsDialogCallback
+   else
     Result := nil;
 end;
 

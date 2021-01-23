@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,10 +37,12 @@
 
 unit uCEFStreamWriter;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
@@ -71,10 +73,10 @@ uses
 
 class function TCefStreamWriterRef.CreateForFile(const fileName: ustring): ICefStreamWriter;
 var
-  s: TCefString;
+  TempFileName : TCefString;
 begin
-  s := CefString(fileName);
-  Result := UnWrap(cef_stream_writer_create_for_file(@s));
+  TempFileName := CefString(fileName);
+  Result       := UnWrap(cef_stream_writer_create_for_file(@TempFileName));
 end;
 
 class function TCefStreamWriterRef.CreateForHandler(const handler: ICefWriteHandler): ICefStreamWriter;
@@ -84,34 +86,35 @@ end;
 
 function TCefStreamWriterRef.Flush: Integer;
 begin
-  Result := PCefStreamWriter(FData).flush(FData);
+  Result := PCefStreamWriter(FData)^.flush(PCefStreamWriter(FData));
 end;
 
 function TCefStreamWriterRef.MayBlock: Boolean;
 begin
-  Result := PCefStreamWriter(FData).may_block(FData) <> 0;
+  Result := PCefStreamWriter(FData)^.may_block(PCefStreamWriter(FData)) <> 0;
 end;
 
 function TCefStreamWriterRef.Seek(offset: Int64; whence: Integer): Integer;
 begin
-  Result := PCefStreamWriter(FData).seek(FData, offset, whence);
+  Result := PCefStreamWriter(FData)^.seek(PCefStreamWriter(FData), offset, whence);
 end;
 
 function TCefStreamWriterRef.Tell: Int64;
 begin
-  Result := PCefStreamWriter(FData).tell(FData);
+  Result := PCefStreamWriter(FData)^.tell(PCefStreamWriter(FData));
 end;
 
 class function TCefStreamWriterRef.UnWrap(data: Pointer): ICefStreamWriter;
 begin
   if data <> nil then
-    Result := Create(data) as ICefStreamWriter else
+    Result := Create(data) as ICefStreamWriter
+   else
     Result := nil;
 end;
 
 function TCefStreamWriterRef.write(const ptr: Pointer; size, n: NativeUInt): NativeUInt;
 begin
-  Result := PCefStreamWriter(FData).write(FData, ptr, size, n);
+  Result := PCefStreamWriter(FData)^.write(PCefStreamWriter(FData), ptr, size, n);
 end;
 
 end.

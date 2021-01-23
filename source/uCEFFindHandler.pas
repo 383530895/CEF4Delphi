@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,10 +37,12 @@
 
 unit uCEFFindHandler;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
@@ -54,59 +56,97 @@ type
     protected
       procedure OnFindResult(const browser: ICefBrowser; identifier, count: Integer; const selectionRect: PCefRect; activeMatchOrdinal: Integer; finalUpdate: Boolean); virtual; abstract;
 
+      procedure RemoveReferences; virtual;
+
     public
       constructor Create; virtual;
   end;
 
   TCustomFindHandler = class(TCefFindHandlerOwn)
     protected
-      FEvent: IChromiumEvents;
+      FEvents : Pointer;
 
       procedure OnFindResult(const browser: ICefBrowser; identifier, count: Integer; const selectionRect: PCefRect; activeMatchOrdinal: Integer; finalUpdate: Boolean); override;
 
+      procedure RemoveReferences; override;
+
     public
-      constructor Create(const events: IChromiumEvents); reintroduce; virtual;
+      constructor Create(const events : IChromiumEvents); reintroduce; virtual;
       destructor  Destroy; override;
   end;
 
 implementation
 
 uses
+  {$IFDEF DELPHI16_UP}
+  System.SysUtils,
+  {$ELSE}
+  SysUtils,
+  {$ENDIF}
   uCEFMiscFunctions, uCEFLibFunctions, uCEFBrowser;
 
-procedure cef_find_handler_on_find_result(self: PCefFindHandler; browser: PCefBrowser; identifier, count: Integer; const selection_rect: PCefRect; active_match_ordinal, final_update: Integer); stdcall;
+procedure cef_find_handler_on_find_result(      self                 : PCefFindHandler;
+                                                browser              : PCefBrowser;
+                                                identifier           : Integer;
+                                                count                : Integer;
+                                          const selection_rect       : PCefRect;
+                                                active_match_ordinal : integer;
+                                                final_update         : Integer); stdcall;
+var
+  TempObject : TObject;
 begin
-  with TCefFindHandlerOwn(CefGetObject(self)) do
-    OnFindResult(TCefBrowserRef.UnWrap(browser), identifier, count, selection_rect, active_match_ordinal, final_update <> 0);
+  TempObject := CefGetObject(self);
+
+  if (TempObject <> nil) and (TempObject is TCefFindHandlerOwn) then
+    TCefFindHandlerOwn(TempObject).OnFindResult(TCefBrowserRef.UnWrap(browser),
+                                                identifier,
+                                                count,
+                                                selection_rect,
+                                                active_match_ordinal,
+                                                final_update <> 0);
 end;
 
 constructor TCefFindHandlerOwn.Create;
 begin
-  CreateData(SizeOf(TCefFindHandler), False);
+  inherited CreateData(SizeOf(TCefFindHandler));
 
-  with PCefFindHandler(FData)^ do on_find_result := cef_find_handler_on_find_result;
+  PCefFindHandler(FData)^.on_find_result := {$IFDEF FPC}@{$ENDIF}cef_find_handler_on_find_result;
+end;
+
+procedure TCefFindHandlerOwn.RemoveReferences;
+begin
+  //
 end;
 
 // TCustomFindHandler
 
-constructor TCustomFindHandler.Create(const events: IChromiumEvents);
+constructor TCustomFindHandler.Create(const events : IChromiumEvents);
 begin
   inherited Create;
 
-  FEvent := events;
+  FEvents := Pointer(events);
 end;
 
 destructor TCustomFindHandler.Destroy;
 begin
-  FEvent := nil;
+  RemoveReferences;
 
   inherited Destroy;
 end;
 
-procedure TCustomFindHandler.OnFindResult(const browser: ICefBrowser; identifier, count: Integer; const selectionRect: PCefRect; activeMatchOrdinal: Integer; finalUpdate: Boolean);
+procedure TCustomFindHandler.RemoveReferences;
 begin
-  if (FEvent <> nil) then
-    FEvent.doOnFindResult(browser, identifier, count, selectionRect, activeMatchOrdinal, finalUpdate);
+  FEvents := nil;
+end;
+
+procedure TCustomFindHandler.OnFindResult(const browser            : ICefBrowser;
+                                                identifier         : Integer;
+                                                count              : Integer;
+                                          const selectionRect      : PCefRect;
+                                                activeMatchOrdinal : Integer;
+                                                finalUpdate        : Boolean);
+begin
+  if (FEvents <> nil) then IChromiumEvents(FEvents).doOnFindResult(browser, identifier, count, selectionRect, activeMatchOrdinal, finalUpdate);
 end;
 
 end.

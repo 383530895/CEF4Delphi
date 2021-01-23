@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,10 +37,12 @@
 
 unit uCEFTask;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
@@ -66,8 +68,6 @@ type
       class function UnWrap(data: Pointer): ICefTask;
   end;
 
-  TCefFastTaskProc = {$IFDEF DELPHI12_UP}reference to{$ENDIF} procedure;
-
   TCefFastTask = class(TCefTaskOwn)
     protected
       FMethod: TCefFastTaskProc;
@@ -80,72 +80,209 @@ type
       constructor Create(const method: TCefFastTaskProc); reintroduce;
   end;
 
-  TCefGetTextTask = class(TCefTaskOwn)
-    protected
-      FChromiumBrowser : TObject;
-      FFrameName       : ustring;
-      FFrame           : ICefFrame;
-      FFrameIdentifier : int64;
-
-      procedure Execute; override;
-
-    public
-      constructor Create(const aChromiumBrowser : TObject; const aFrameName : ustring); reintroduce; overload;
-      constructor Create(const aChromiumBrowser : TObject; const aFrame : ICefFrame); reintroduce; overload;
-      constructor Create(const aChromiumBrowser : TObject; const aFrameIdentifier : int64); reintroduce; overload;
-      destructor  Destroy; override;
-  end;
-
-  TCefGetHTMLTask = class(TCefGetTextTask)
-    protected
-      procedure Execute; override;
-  end;
-
-  TCefDeleteCookiesTask = class(TCefTaskOwn)
-    protected
-      FCallBack : ICefDeleteCookiesCallback;
-
-      procedure Execute; override;
-
-    public
-      constructor Create(const aCallBack : ICefDeleteCookiesCallback); reintroduce;
-  end;
-
   TCefUpdatePrefsTask = class(TCefTaskOwn)
     protected
-      FChromiumBrowser : TObject;
+      FEvents : Pointer;
 
       procedure Execute; override;
 
     public
-      constructor Create(const aChromiumBrowser : TObject); reintroduce;
+      constructor Create(const aEvents : IChromiumEvents); reintroduce;
+      destructor  Destroy; override;
   end;
 
   TCefSavePrefsTask = class(TCefTaskOwn)
     protected
-      FChromiumBrowser : TObject;
+      FEvents : Pointer;
 
       procedure Execute; override;
 
     public
-      constructor Create(const aChromiumBrowser : TObject); reintroduce;
+      constructor Create(const aEvents : IChromiumEvents); reintroduce;
+      destructor  Destroy; override;
   end;
+
+  TCefURLRequestTask = class(TCefTaskOwn)
+    protected
+      FEvents : Pointer;
+
+      procedure Execute; override;
+
+    public
+      constructor Create(const aEvents : ICEFUrlRequestClientEvents); reintroduce;
+      destructor  Destroy; override;
+  end;
+
+  TCefGenericTask = class(TCefTaskOwn)
+    protected
+      FEvents : Pointer;
+      FTaskID : cardinal;
+
+      procedure Execute; override;
+
+    public
+      constructor Create(const aEvents : IChromiumEvents; aTaskID : cardinal); reintroduce;
+      destructor  Destroy; override;
+  end;
+
+  TCefUpdateZoomStepTask = class(TCefTaskOwn)
+    protected
+      FEvents : Pointer;
+      FInc    : boolean;
+
+      procedure Execute; override;
+
+    public
+      constructor Create(const aEvents : IChromiumEvents; aInc : boolean); reintroduce;
+      destructor  Destroy; override;
+  end;
+
+  TCefUpdateZoomPctTask = class(TCefTaskOwn)
+    protected
+      FEvents : Pointer;
+      FInc    : boolean;
+
+      procedure Execute; override;
+
+    public
+      constructor Create(const aEvents : IChromiumEvents; aInc : boolean); reintroduce;
+      destructor  Destroy; override;
+  end;
+
+  TCefReadZoomTask = class(TCefTaskOwn)
+    protected
+      FEvents : Pointer;
+
+      procedure Execute; override;
+
+    public
+      constructor Create(const aEvents : IChromiumEvents); reintroduce;
+      destructor  Destroy; override;
+  end;
+
+  TCefSetZoomLevelTask = class(TCefTaskOwn)
+    protected
+      FEvents : Pointer;
+      FValue  : double;
+
+      procedure Execute; override;
+
+    public
+      constructor Create(const aEvents : IChromiumEvents; const aValue : double); reintroduce;
+      destructor  Destroy; override;
+  end;
+
+  TCefSetZoomPctTask = class(TCefTaskOwn)
+    protected
+      FEvents : Pointer;
+      FValue  : double;
+
+      procedure Execute; override;
+
+    public
+      constructor Create(const aEvents : IChromiumEvents; const aValue : double); reintroduce;
+      destructor  Destroy; override;
+  end;
+
+  TCefSetZoomStepTask = class(TCefTaskOwn)
+    protected
+      FEvents : Pointer;
+      FValue  : byte;
+
+      procedure Execute; override;
+
+    public
+      constructor Create(const aEvents : IChromiumEvents; aValue : byte); reintroduce;
+      destructor  Destroy; override;
+  end;
+
+  TCefCreateCustomViewTask = class(TCefTaskOwn)
+    protected
+      FEvents : Pointer;
+
+      procedure Execute; override;
+
+    public
+      constructor Create(const aEvents : ICefViewDelegateEvents); reintroduce;
+      destructor  Destroy; override;
+  end;
+
+  TCefBrowserNavigationTask = class(TCefTaskOwn)
+    protected
+      FEvents : Pointer;
+      FTask   : TCefBrowserNavigation;
+
+      procedure Execute; override;
+
+    public
+      constructor Create(const aEvents : IChromiumEvents; aTask : TCefBrowserNavigation); reintroduce;
+      destructor  Destroy; override;
+  end;
+
+  TCefUpdateSizeTask = class(TCefTaskOwn)
+    protected
+      FEvents : Pointer;
+      FLeft   : integer;
+      FTop    : integer;
+      FWidth  : integer;
+      FHeight : integer;
+
+      procedure Execute; override;
+
+    public
+      constructor Create(const aEvents : IChromiumEvents; aLeft, aTop, aWidth, aHeight : integer); reintroduce;
+      destructor  Destroy; override;
+  end;
+
+  TCefSendCaptureLostEventTask = class(TCefTaskOwn)
+    protected
+      FEvents : Pointer;
+
+      procedure Execute; override;
+
+    public
+      constructor Create(const aEvents : IChromiumEvents); reintroduce;
+      destructor  Destroy; override;
+  end;
+
+  TCefUpdateXWindowVisibilityTask = class(TCefTaskOwn)
+    protected
+      FEvents  : pointer;
+      FVisible : boolean;
+
+      procedure Execute; override;
+
+    public
+      constructor Create(const aEvents : IChromiumEvents; aVisible : boolean); reintroduce;
+      destructor  Destroy; override;
+  end;
+
 
 implementation
 
 uses
-  uCEFMiscFunctions, uCEFLibFunctions, uCEFChromium, uCEFCookieManager;
+  {$IFDEF DELPHI16_UP}
+  System.SysUtils,
+  {$ELSE}
+  SysUtils,
+  {$ENDIF}
+  uCEFMiscFunctions, uCEFLibFunctions, uCEFCookieManager, uCEFUrlRequest;
 
 procedure cef_task_execute(self: PCefTask); stdcall;
+var
+  TempObject : TObject;
 begin
-  TCefTaskOwn(CefGetObject(self)).Execute();
+  TempObject := CefGetObject(self);
+
+  if (TempObject <> nil) and (TempObject is TCefTaskOwn) then
+    TCefTaskOwn(TempObject).Execute;
 end;
 
 constructor TCefTaskOwn.Create;
 begin
   inherited CreateData(SizeOf(TCefTask));
 
-  with PCefTask(FData)^ do execute := cef_task_execute;
+  PCefTask(FData)^.execute := {$IFDEF FPC}@{$ENDIF}cef_task_execute;
 end;
 
 procedure TCefTaskOwn.Execute;
@@ -159,12 +296,12 @@ end;
 
 procedure TCefTaskRef.Execute;
 begin
-  PCefTask(FData).execute(FData);
+  PCefTask(FData)^.execute(PCefTask(FData));
 end;
 
 class function TCefTaskRef.UnWrap(data: Pointer): ICefTask;
 begin
-  if data <> nil then
+  if (data <> nil) then
     Result := Create(data) as ICefTask
    else
     Result := nil;
@@ -196,128 +333,490 @@ begin
   CefPostDelayedTask(threadId, Create(method), Delay);
 end;
 
-// TCefGetTextTask
-
-
-constructor TCefGetTextTask.Create(const aChromiumBrowser : TObject; const aFrameName : ustring);
-begin
-  inherited Create;
-
-  FChromiumBrowser := aChromiumBrowser;
-  FFrameName       := aFrameName;
-  FFrame           := nil;
-  FFrameIdentifier := 0;
-end;
-
-constructor TCefGetTextTask.Create(const aChromiumBrowser : TObject; const aFrame : ICefFrame);
-begin
-  inherited Create;
-
-  FChromiumBrowser := aChromiumBrowser;
-  FFrameName       := '';
-  FFrame           := aFrame;
-  FFrameIdentifier := 0;
-end;
-
-constructor TCefGetTextTask.Create(const aChromiumBrowser : TObject; const aFrameIdentifier : int64);
-begin
-  inherited Create;
-
-  FChromiumBrowser := aChromiumBrowser;
-  FFrameName       := '';
-  FFrame           := nil;
-  FFrameIdentifier := aFrameIdentifier;
-end;
-
-destructor TCefGetTextTask.Destroy;
-begin
-  FFrame := nil;
-
-  inherited Destroy;
-end;
-
-procedure TCefGetTextTask.Execute;
-begin
-  if (FChromiumBrowser <> nil) and (FChromiumBrowser is TChromium) then
-    begin
-      if (FFrame <> nil) then
-        TChromium(FChromiumBrowser).Internal_GetText(FFrame)
-       else
-        if (FFrameIdentifier <> 0) then
-          TChromium(FChromiumBrowser).Internal_GetText(FFrameIdentifier)
-         else
-          TChromium(FChromiumBrowser).Internal_GetText(FFrameName);
-    end;
-end;
-
-
-// TCefGetHTMLTask
-
-procedure TCefGetHTMLTask.Execute;
-begin
-  if (FChromiumBrowser <> nil) and (FChromiumBrowser is TChromium) then
-    begin
-      if (FFrame <> nil) then
-        TChromium(FChromiumBrowser).Internal_GetHTML(FFrame)
-       else
-        if (FFrameIdentifier <> 0) then
-          TChromium(FChromiumBrowser).Internal_GetHTML(FFrameIdentifier)
-         else
-          TChromium(FChromiumBrowser).Internal_GetHTML(FFrameName);
-    end;
-end;
-
-
-// TCefDeleteCookiesTask
-
-
-constructor TCefDeleteCookiesTask.Create(const aCallBack : ICefDeleteCookiesCallback);
-begin
-  inherited Create;
-
-  FCallBack := aCallBack;
-end;
-
-procedure TCefDeleteCookiesTask.Execute;
-var
-  CookieManager : ICefCookieManager;
-begin
-  CookieManager := TCefCookieManagerRef.Global(nil);
-  CookieManager.DeleteCookies('', '', FCallBack);
-end;
-
 
 // TCefUpdatePrefsTask
 
 
-constructor TCefUpdatePrefsTask.Create(const aChromiumBrowser : TObject);
+constructor TCefUpdatePrefsTask.Create(const aEvents : IChromiumEvents);
 begin
   inherited Create;
 
-  FChromiumBrowser := aChromiumBrowser;
+  FEvents := Pointer(aEvents);
+end;
+
+destructor TCefUpdatePrefsTask.Destroy;
+begin
+  FEvents := nil;
+
+  inherited Destroy;
 end;
 
 procedure TCefUpdatePrefsTask.Execute;
 begin
-  if (FChromiumBrowser <> nil) and (FChromiumBrowser is TChromium) then
-    TChromium(FChromiumBrowser).Internal_UpdatePreferences;
+  try
+    try
+      if (FEvents <> nil) then IChromiumEvents(FEvents).doUpdateOwnPreferences;
+    except
+      on e : exception do
+        if CustomExceptionHandler('TCefUpdatePrefsTask.Execute', e) then raise;
+    end;
+  finally
+    FEvents := nil;
+  end;
 end;
 
 
 // TCefSavePrefsTask
 
 
-constructor TCefSavePrefsTask.Create(const aChromiumBrowser : TObject);
+constructor TCefSavePrefsTask.Create(const aEvents : IChromiumEvents);
 begin
   inherited Create;
 
-  FChromiumBrowser := aChromiumBrowser;
+  FEvents := Pointer(aEvents);
+end;
+
+destructor TCefSavePrefsTask.Destroy;
+begin
+  FEvents := nil;
+
+  inherited Destroy;
 end;
 
 procedure TCefSavePrefsTask.Execute;
 begin
-  if (FChromiumBrowser <> nil) and (FChromiumBrowser is TChromium) then
-    TChromium(FChromiumBrowser).Internal_SavePreferences;
+  try
+    try
+      if (FEvents <> nil) then IChromiumEvents(FEvents).doSavePreferences;
+    except
+      on e : exception do
+        if CustomExceptionHandler('TCefSavePrefsTask.Execute', e) then raise;
+    end;
+  finally
+    FEvents := nil;
+  end;
 end;
+
+
+// TCefURLRequestTask
+
+procedure TCefURLRequestTask.Execute;
+begin
+  try
+    try
+      if (FEvents <> nil) then ICEFUrlRequestClientEvents(FEvents).doOnCreateURLRequest;
+    except
+      on e : exception do
+        if CustomExceptionHandler('TCefURLRequestTask.Execute', e) then raise;
+    end;
+  finally
+    FEvents := nil;
+  end;
+end;
+
+constructor TCefURLRequestTask.Create(const aEvents : ICEFUrlRequestClientEvents);
+begin
+  inherited Create;
+
+  FEvents := Pointer(aEvents);
+end;
+
+destructor TCefURLRequestTask.Destroy;
+begin
+  FEvents := nil;
+
+  inherited Destroy;
+end;
+
+
+// TCefGenericTask
+
+procedure TCefGenericTask.Execute;
+begin
+  try
+    try
+      if (FEvents <> nil) then IChromiumEvents(FEvents).doOnExecuteTaskOnCefThread(FTaskID);
+    except
+      on e : exception do
+        if CustomExceptionHandler('TCefGenericTask.Execute', e) then raise;
+    end;
+  finally
+    FEvents := nil;
+  end;
+end;
+
+constructor TCefGenericTask.Create(const aEvents : IChromiumEvents; aTaskID : cardinal);
+begin
+  inherited Create;
+
+  FEvents := Pointer(aEvents);
+  FTaskID := aTaskID;
+end;
+
+destructor TCefGenericTask.Destroy;
+begin
+  FEvents := nil;
+
+  inherited Destroy;
+end;
+
+
+
+// TCefUpdateZoomStepTask
+
+procedure TCefUpdateZoomStepTask.Execute;
+begin
+  try
+    try
+      if (FEvents <> nil) then IChromiumEvents(FEvents).doUpdateZoomStep(FInc);
+    except
+      on e : exception do
+        if CustomExceptionHandler('TCefUpdateZoomStepTask.Execute', e) then raise;
+    end;
+  finally
+    FEvents := nil;
+  end;
+end;
+
+constructor TCefUpdateZoomStepTask.Create(const aEvents : IChromiumEvents; aInc : boolean);
+begin
+  inherited Create;
+
+  FEvents := Pointer(aEvents);
+  FInc    := aInc;
+end;
+
+destructor TCefUpdateZoomStepTask.Destroy;
+begin
+  FEvents := nil;
+
+  inherited Destroy;
+end;
+
+
+
+// TCefUpdateZoomPctTask
+
+procedure TCefUpdateZoomPctTask.Execute;
+begin
+  try
+    try
+      if (FEvents <> nil) then IChromiumEvents(FEvents).doUpdateZoomPct(FInc);
+    except
+      on e : exception do
+        if CustomExceptionHandler('TCefUpdateZoomPctTask.Execute', e) then raise;
+    end;
+  finally
+    FEvents := nil;
+  end;
+end;
+
+constructor TCefUpdateZoomPctTask.Create(const aEvents : IChromiumEvents; aInc : boolean);
+begin
+  inherited Create;
+
+  FEvents := Pointer(aEvents);
+  FInc    := aInc;
+end;
+
+destructor TCefUpdateZoomPctTask.Destroy;
+begin
+  FEvents := nil;
+
+  inherited Destroy;
+end;
+
+
+
+// TCefReadZoomTask
+
+procedure TCefReadZoomTask.Execute;
+begin
+  try
+    try
+      if (FEvents <> nil) then IChromiumEvents(FEvents).doReadZoom;
+    except
+      on e : exception do
+        if CustomExceptionHandler('TCefReadZoomTask.Execute', e) then raise;
+    end;
+  finally
+    FEvents := nil;
+  end;
+end;
+
+constructor TCefReadZoomTask.Create(const aEvents : IChromiumEvents);
+begin
+  inherited Create;
+
+  FEvents := Pointer(aEvents);
+end;
+
+destructor TCefReadZoomTask.Destroy;
+begin
+  FEvents := nil;
+
+  inherited Destroy;
+end;
+
+
+
+// TCefSetZoomLevelTask
+
+procedure TCefSetZoomLevelTask.Execute;
+begin
+  try
+    try
+      if (FEvents <> nil) then IChromiumEvents(FEvents).doSetZoomLevel(FValue);
+    except
+      on e : exception do
+        if CustomExceptionHandler('TCefSetZoomLevelTask.Execute', e) then raise;
+    end;
+  finally
+    FEvents := nil;
+  end;
+end;
+
+constructor TCefSetZoomLevelTask.Create(const aEvents : IChromiumEvents; const aValue : double);
+begin
+  inherited Create;
+
+  FEvents := Pointer(aEvents);
+  FValue  := aValue;
+end;
+
+destructor TCefSetZoomLevelTask.Destroy;
+begin
+  FEvents := nil;
+
+  inherited Destroy;
+end;
+
+
+
+// TCefSetZoomPctTask
+
+procedure TCefSetZoomPctTask.Execute;
+begin
+  try
+    try
+      if (FEvents <> nil) then IChromiumEvents(FEvents).doSetZoomPct(FValue);
+    except
+      on e : exception do
+        if CustomExceptionHandler('TCefSetZoomPctTask.Execute', e) then raise;
+    end;
+  finally
+    FEvents := nil;
+  end;
+end;
+
+constructor TCefSetZoomPctTask.Create(const aEvents : IChromiumEvents; const aValue : double);
+begin
+  inherited Create;
+
+  FEvents := Pointer(aEvents);
+  FValue  := aValue;
+end;
+
+destructor TCefSetZoomPctTask.Destroy;
+begin
+  FEvents := nil;
+
+  inherited Destroy;
+end;
+
+
+
+// TCefSetZoomStepTask
+
+procedure TCefSetZoomStepTask.Execute;
+begin
+  try
+    try
+      if (FEvents <> nil) then IChromiumEvents(FEvents).doSetZoomStep(FValue);
+    except
+      on e : exception do
+        if CustomExceptionHandler('TCefSetZoomStepTask.Execute', e) then raise;
+    end;
+  finally
+    FEvents := nil;
+  end;
+end;
+
+constructor TCefSetZoomStepTask.Create(const aEvents : IChromiumEvents; aValue : byte);
+begin
+  inherited Create;
+
+  FEvents := Pointer(aEvents);
+  FValue  := aValue;
+end;
+
+destructor TCefSetZoomStepTask.Destroy;
+begin
+  FEvents := nil;
+
+  inherited Destroy;
+end;
+
+
+// TCefCreateCustomViewTask
+
+procedure TCefCreateCustomViewTask.Execute;
+begin
+  try
+    try
+      if (FEvents <> nil) then ICefViewDelegateEvents(FEvents).doCreateCustomView;
+    except
+      on e : exception do
+        if CustomExceptionHandler('ICefViewDelegateEvents.Execute', e) then raise;
+    end;
+  finally
+    FEvents := nil;
+  end;
+end;
+
+constructor TCefCreateCustomViewTask.Create(const aEvents : ICefViewDelegateEvents);
+begin
+  inherited Create;
+
+  FEvents := Pointer(aEvents);
+end;
+
+destructor TCefCreateCustomViewTask.Destroy;
+begin
+  FEvents := nil;
+
+  inherited Destroy;
+end;
+
+
+// TCefBrowserNavigationTask
+
+procedure TCefBrowserNavigationTask.Execute;
+begin
+  try
+    try
+      if (FEvents <> nil) then IChromiumEvents(FEvents).doBrowserNavigation(FTask);
+    except
+      on e : exception do
+        if CustomExceptionHandler('TCefBrowserNavigationTask.Execute', e) then raise;
+    end;
+  finally
+    FEvents := nil;
+  end;
+end;
+
+constructor TCefBrowserNavigationTask.Create(const aEvents : IChromiumEvents; aTask : TCefBrowserNavigation);
+begin
+  inherited Create;
+
+  FEvents := Pointer(aEvents);
+  FTask   := aTask;
+end;
+
+destructor TCefBrowserNavigationTask.Destroy;
+begin
+  FEvents := nil;
+
+  inherited Destroy;
+end;
+
+
+// TCefUpdateSizeTask
+
+procedure TCefUpdateSizeTask.Execute;
+begin
+  try
+    try
+      if (FEvents <> nil) then IChromiumEvents(FEvents).doUpdateSize(FLeft, FTop, FWidth, FHeight);
+    except
+      on e : exception do
+        if CustomExceptionHandler('TCefUpdateSizeTask.Execute', e) then raise;
+    end;
+  finally
+    FEvents := nil;
+  end;
+end;
+
+constructor TCefUpdateSizeTask.Create(const aEvents : IChromiumEvents; aLeft, aTop, aWidth, aHeight : integer);
+begin
+  inherited Create;
+
+  FEvents := Pointer(aEvents);
+  FLeft   := aLeft;
+  FTop    := aTop;
+  FWidth  := aWidth;
+  FHeight := aHeight;
+end;
+
+destructor TCefUpdateSizeTask.Destroy;
+begin
+  FEvents := nil;
+
+  inherited Destroy;
+end;
+
+
+// TCefSendCaptureLostEventTask
+
+procedure TCefSendCaptureLostEventTask.Execute;
+begin
+  try
+    try
+      if (FEvents <> nil) then IChromiumEvents(FEvents).doSendCaptureLostEvent;
+    except
+      on e : exception do
+        if CustomExceptionHandler('TCefSendCaptureLostEventTask.Execute', e) then raise;
+    end;
+  finally
+    FEvents := nil;
+  end;
+end;
+
+constructor TCefSendCaptureLostEventTask.Create(const aEvents : IChromiumEvents);
+begin
+  inherited Create;
+
+  FEvents := Pointer(aEvents);
+end;
+
+destructor TCefSendCaptureLostEventTask.Destroy;
+begin
+  FEvents := nil;
+
+  inherited Destroy;
+end;
+
+
+// TCefUpdateXWindowVisibilityTask
+
+procedure TCefUpdateXWindowVisibilityTask.Execute;
+begin
+  try
+    try
+      if (FEvents <> nil) then IChromiumEvents(FEvents).doUpdateXWindowVisibility(FVisible);
+    except
+      on e : exception do
+        if CustomExceptionHandler('TCefUpdateXWindowVisibilityTask.Execute', e) then raise;
+    end;
+  finally
+    FEvents := nil;
+  end;
+end;
+
+constructor TCefUpdateXWindowVisibilityTask.Create(const aEvents : IChromiumEvents; aVisible : boolean);
+begin
+  inherited Create;
+
+  FEvents  := Pointer(aEvents);
+  FVisible := aVisible;
+end;
+
+destructor TCefUpdateXWindowVisibilityTask.Destroy;
+begin
+  FEvents := nil;
+
+  inherited Destroy;
+end;
+
 
 end.

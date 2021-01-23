@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,10 +37,12 @@
 
 unit uCEFMenuModelDelegate;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
@@ -58,7 +60,7 @@ type
     procedure UnhandledCloseSubmenu(const menuModel: ICefMenuModel; isRTL: boolean); virtual;
     procedure MenuWillShow(const menuModel: ICefMenuModel); virtual;
     procedure MenuClosed(const menuModel: ICefMenuModel); virtual;
-    function  FormatLabel(const menuModel: ICefMenuModel; const label_ : uString) : boolean; virtual;
+    function  FormatLabel(const menuModel: ICefMenuModel; var label_ : ustring) : boolean; virtual;
   public
     constructor Create; virtual;
   end;
@@ -68,104 +70,148 @@ implementation
 uses
   uCEFMiscFunctions, uCEFLibFunctions, uCEFMenuModel;
 
-procedure cef_menu_model_delegate_execute_command(self: PCefMenuModelDelegate;
-  menu_model: PCefMenuModel; command_id: Integer; event_flags: TCefEventFlags); stdcall;
+procedure cef_menu_model_delegate_execute_command(self        : PCefMenuModelDelegate;
+                                                  menu_model  : PCefMenuModel;
+                                                  command_id  : Integer;
+                                                  event_flags : TCefEventFlags); stdcall;
+var
+  TempObject : TObject;
 begin
-  with TCefMenuModelDelegateOwn(CefGetObject(self)) do
-    ExecuteCommand(TCefMenuModelRef.UnWrap(menu_model), command_id, event_flags);
+  TempObject := CefGetObject(self);
+
+  if (TempObject <> nil) and (TempObject is TCefMenuModelDelegateOwn) then
+    TCefMenuModelDelegateOwn(TempObject).ExecuteCommand(TCefMenuModelRef.UnWrap(menu_model),
+                                                        command_id,
+                                                        event_flags);
 end;
 
-procedure cef_menu_model_delegate_mouse_outside_menu(self: PCefMenuModelDelegate;
-                                                     menu_model: PCefMenuModel;
-                                                     const screen_point: PCefPoint); stdcall;
+procedure cef_menu_model_delegate_mouse_outside_menu(      self         : PCefMenuModelDelegate;
+                                                           menu_model   : PCefMenuModel;
+                                                     const screen_point : PCefPoint); stdcall;
+var
+  TempObject : TObject;
 begin
-  with TCefMenuModelDelegateOwn(CefGetObject(self)) do
-    MouseOutsideMenu(TCefMenuModelRef.UnWrap(menu_model), screen_point);
+  TempObject := CefGetObject(self);
+
+  if (TempObject <> nil) and (TempObject is TCefMenuModelDelegateOwn) then
+    TCefMenuModelDelegateOwn(TempObject).MouseOutsideMenu(TCefMenuModelRef.UnWrap(menu_model),
+                                                          screen_point);
 end;
 
-procedure cef_menu_model_delegate_unhandled_open_submenu(self: PCefMenuModelDelegate;
-                                                         menu_model: PCefMenuModel;
-                                                         is_rtl: integer); stdcall;
+procedure cef_menu_model_delegate_unhandled_open_submenu(self       : PCefMenuModelDelegate;
+                                                         menu_model : PCefMenuModel;
+                                                         is_rtl     : integer); stdcall;
+var
+  TempObject : TObject;
 begin
-  with TCefMenuModelDelegateOwn(CefGetObject(self)) do
-    UnhandledOpenSubmenu(TCefMenuModelRef.UnWrap(menu_model), is_rtl <> 0);
+  TempObject := CefGetObject(self);
+
+  if (TempObject <> nil) and (TempObject is TCefMenuModelDelegateOwn) then
+    TCefMenuModelDelegateOwn(TempObject).UnhandledOpenSubmenu(TCefMenuModelRef.UnWrap(menu_model),
+                                                              is_rtl <> 0);
 end;
 
-procedure cef_menu_model_delegate_unhandled_close_submenu(self: PCefMenuModelDelegate;
-                                                          menu_model: PCefMenuModel;
-                                                          is_rtl: integer); stdcall;
+procedure cef_menu_model_delegate_unhandled_close_submenu(self       : PCefMenuModelDelegate;
+                                                          menu_model : PCefMenuModel;
+                                                          is_rtl     : integer); stdcall;
+var
+  TempObject : TObject;
 begin
-  with TCefMenuModelDelegateOwn(CefGetObject(self)) do
-    UnhandledCloseSubmenu(TCefMenuModelRef.UnWrap(menu_model), is_rtl <> 0);
+  TempObject := CefGetObject(self);
+
+  if (TempObject <> nil) and (TempObject is TCefMenuModelDelegateOwn) then
+    TCefMenuModelDelegateOwn(TempObject).UnhandledCloseSubmenu(TCefMenuModelRef.UnWrap(menu_model),
+                                                               is_rtl <> 0);
 end;
 
-procedure cef_menu_model_delegate_menu_will_show(self: PCefMenuModelDelegate; menu_model: PCefMenuModel); stdcall;
+procedure cef_menu_model_delegate_menu_will_show(self       : PCefMenuModelDelegate;
+                                                 menu_model : PCefMenuModel); stdcall;
+var
+  TempObject : TObject;
 begin
-  with TCefMenuModelDelegateOwn(CefGetObject(self)) do
-    MenuWillShow(TCefMenuModelRef.UnWrap(menu_model));
+  TempObject := CefGetObject(self);
+
+  if (TempObject <> nil) and (TempObject is TCefMenuModelDelegateOwn) then
+    TCefMenuModelDelegateOwn(TempObject).MenuWillShow(TCefMenuModelRef.UnWrap(menu_model));
 end;
 
 procedure cef_menu_model_delegate_menu_closed(self: PCefMenuModelDelegate; menu_model: PCefMenuModel); stdcall;
+var
+  TempObject : TObject;
 begin
-  with TCefMenuModelDelegateOwn(CefGetObject(self)) do
-    MenuClosed(TCefMenuModelRef.UnWrap(menu_model));
+  TempObject := CefGetObject(self);
+
+  if (TempObject <> nil) and (TempObject is TCefMenuModelDelegateOwn) then
+    TCefMenuModelDelegateOwn(TempObject).MenuClosed(TCefMenuModelRef.UnWrap(menu_model));
 end;
 
-function cef_menu_model_delegate_format_label(self: PCefMenuModelDelegate; menu_model: PCefMenuModel; label_ : PCefString) : integer; stdcall;
+function cef_menu_model_delegate_format_label(self       : PCefMenuModelDelegate;
+                                              menu_model : PCefMenuModel;
+                                              label_     : PCefString) : integer; stdcall;
+var
+  TempObject : TObject;
+  TempLabel  : ustring;
 begin
-  with TCefMenuModelDelegateOwn(CefGetObject(self)) do
-    Result := Ord(FormatLabel(TCefMenuModelRef.UnWrap(menu_model), CefString(label_)));
+  Result     := Ord(False);
+  TempObject := CefGetObject(self);
+
+  if (TempObject <> nil) and (TempObject is TCefMenuModelDelegateOwn) then
+    begin
+      TempLabel := CefStringClearAndGet(label_);
+      Result    := Ord(TCefMenuModelDelegateOwn(TempObject).FormatLabel(TCefMenuModelRef.UnWrap(menu_model), TempLabel));
+      if (label_ <> nil) then label_^ := CefStringAlloc(TempLabel);
+    end;
 end;
 
 constructor TCefMenuModelDelegateOwn.Create;
 begin
-  CreateData(SizeOf(TCefMenuModelDelegate), False);
+  inherited CreateData(SizeOf(TCefMenuModelDelegate));
 
   with PCefMenuModelDelegate(FData)^ do
     begin
-      execute_command         := cef_menu_model_delegate_execute_command;
-      mouse_outside_menu      := cef_menu_model_delegate_mouse_outside_menu;
-      unhandled_open_submenu  := cef_menu_model_delegate_unhandled_open_submenu;
-      unhandled_close_submenu := cef_menu_model_delegate_unhandled_close_submenu;
-      menu_will_show          := cef_menu_model_delegate_menu_will_show;
-      menu_closed             := cef_menu_model_delegate_menu_closed;
-      format_label            := cef_menu_model_delegate_format_label;
+      execute_command         := {$IFDEF FPC}@{$ENDIF}cef_menu_model_delegate_execute_command;
+      mouse_outside_menu      := {$IFDEF FPC}@{$ENDIF}cef_menu_model_delegate_mouse_outside_menu;
+      unhandled_open_submenu  := {$IFDEF FPC}@{$ENDIF}cef_menu_model_delegate_unhandled_open_submenu;
+      unhandled_close_submenu := {$IFDEF FPC}@{$ENDIF}cef_menu_model_delegate_unhandled_close_submenu;
+      menu_will_show          := {$IFDEF FPC}@{$ENDIF}cef_menu_model_delegate_menu_will_show;
+      menu_closed             := {$IFDEF FPC}@{$ENDIF}cef_menu_model_delegate_menu_closed;
+      format_label            := {$IFDEF FPC}@{$ENDIF}cef_menu_model_delegate_format_label;
     end;
 end;
 
-procedure TCefMenuModelDelegateOwn.ExecuteCommand(
-  const menuModel: ICefMenuModel; commandId: Integer;
-  eventFlags: TCefEventFlags);
+procedure TCefMenuModelDelegateOwn.ExecuteCommand(const menuModel  : ICefMenuModel;
+                                                        commandId  : Integer;
+                                                        eventFlags : TCefEventFlags);
 begin
-
+  //
 end;
 
 procedure TCefMenuModelDelegateOwn.MouseOutsideMenu(const menuModel: ICefMenuModel; const screenPoint: PCefPoint);
 begin
-
+  //
 end;
 
 procedure TCefMenuModelDelegateOwn.UnhandledOpenSubmenu(const menuModel: ICefMenuModel; isRTL: boolean);
 begin
-
+  //
 end;
 
 procedure TCefMenuModelDelegateOwn.UnhandledCloseSubmenu(const menuModel: ICefMenuModel; isRTL: boolean);
 begin
-
+  //
 end;
 
 procedure TCefMenuModelDelegateOwn.MenuWillShow(const menuModel: ICefMenuModel);
 begin
-
+  //
 end;
 
 procedure TCefMenuModelDelegateOwn.MenuClosed(const menuModel: ICefMenuModel);
 begin
-
+  //
 end;
 
-function TCefMenuModelDelegateOwn.FormatLabel(const menuModel: ICefMenuModel; const label_ : uString) : boolean;
+function TCefMenuModelDelegateOwn.FormatLabel(const menuModel: ICefMenuModel; var label_ : ustring) : boolean;
 begin
   Result := False;
 end;

@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,10 +37,12 @@
 
 unit uCEFv8Handler;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
@@ -48,20 +50,17 @@ interface
 
 uses
   {$IFDEF DELPHI16_UP}
-  System.Rtti, System.TypInfo, System.Variants, System.SysUtils,
-  System.Classes, System.Math, System.SyncObjs, WinApi.Windows,
+  {$IFDEF MSWINDOWS}WinApi.Windows,{$ENDIF} System.Rtti, System.TypInfo, System.Variants,
+  System.SysUtils, System.Classes, System.Math, System.SyncObjs,
   {$ELSE}
-    {$IFDEF DELPHI14_UP}
-      Rtti,
-    {$ENDIF}
-     TypInfo, Variants, SysUtils, Classes, Math, SyncObjs, Windows,
+  {$IFDEF DELPHI14_UP}Rtti,{$ENDIF} TypInfo, Variants, SysUtils, Classes, Math, SyncObjs, {$IFDEF MSWINDOWS}Windows,{$ENDIF}
   {$ENDIF}
   uCEFBaseRefCounted, uCEFInterfaces, uCEFTypes;
 
 type
   TCefv8HandlerRef = class(TCefBaseRefCountedRef, ICefv8Handler)
     protected
-      function Execute(const name: ustring; const obj: ICefv8Value; const arguments: TCefv8ValueArray; var retval: ICefv8Value; var exception: ustring): Boolean;
+      function Execute(const name: ustring; const object_: ICefv8Value; const arguments: TCefv8ValueArray; var retval: ICefv8Value; var exception: ustring): Boolean;
 
     public
       class function UnWrap(data: Pointer): ICefv8Handler;
@@ -69,7 +68,7 @@ type
 
   TCefv8HandlerOwn = class(TCefBaseRefCountedOwn, ICefv8Handler)
     protected
-      function Execute(const name: ustring; const obj: ICefv8Value; const arguments: TCefv8ValueArray; var retval: ICefv8Value; var exception: ustring): Boolean; virtual;
+      function Execute(const name: ustring; const object_: ICefv8Value; const arguments: TCefv8ValueArray; var retval: ICefv8Value; var exception: ustring): Boolean; virtual;
 
     public
       constructor Create; virtual;
@@ -88,12 +87,12 @@ type
       class function StrToPtr(const str: ustring): Pointer;
       class function PtrToStr(p: Pointer): ustring;
   {$ENDIF}
-      function Execute(const name: ustring; const obj: ICefv8Value; const arguments: TCefv8ValueArray; var retval: ICefv8Value; var exception: ustring): Boolean; override;
+      function Execute(const name: ustring; const object_: ICefv8Value; const arguments: TCefv8ValueArray; var retval: ICefv8Value; var exception: ustring): Boolean; override;
 
     public
       constructor Create(const value: TValue; SyncMainThread: Boolean = False); reintroduce;
       destructor Destroy; override;
-      class procedure Register(const name: string; const value: TValue; SyncMainThread: Boolean = False);
+      class function Register(const name: ustring; const value: TValue; SyncMainThread: Boolean = False) : boolean;
   end;
 {$ENDIF}
 
@@ -102,53 +101,106 @@ implementation
 uses
   uCEFMiscFunctions, uCEFLibFunctions, uCEFv8Value, uCEFConstants;
 
-function cef_v8_handler_execute(self: PCefv8Handler;
-  const name: PCefString; obj: PCefv8Value; argumentsCount: NativeUInt;
-  const arguments: PPCefV8Value; var retval: PCefV8Value;
-  var exception: TCefString): Integer; stdcall;
+function cef_v8_handler_execute(      self           : PCefv8Handler;
+                                const name           : PCefString;
+                                      object_        : PCefv8Value;
+                                      argumentsCount : NativeUInt;
+                                const arguments      : PPCefV8Value;
+                                var   retval         : PCefV8Value;
+                                      exception      : PCefString): Integer; stdcall;
 var
-  args: TCefv8ValueArray;
-  i: NativeInt;
-  ret: ICefv8Value;
-  exc: ustring;
+  TempArgs        : TCefv8ValueArray;
+  i               : NativeUInt;
+  TempReturnValue : ICefv8Value;
+  TempException   : ustring;
+  TempObject      : TObject;
+  TempRecObject   : ICefv8Value;
 begin
-  SetLength(args, argumentsCount);
-  for i := 0 to argumentsCount - 1 do
-    args[i] := TCefv8ValueRef.UnWrap(arguments[i]);
+  Result     := Ord(False);
+  TempObject := CefGetObject(self);
 
-  Result := -Ord(TCefv8HandlerOwn(CefGetObject(self)).Execute(
-    CefString(name), TCefv8ValueRef.UnWrap(obj), args, ret, exc));
-  retval := CefGetData(ret);
-  ret := nil;
-  exception := CefString(exc);
+  if (TempObject <> nil) and (TempObject is TCefv8HandlerOwn) then
+    try
+      TempRecObject   := TCefv8ValueRef.UnWrap(object_);
+      TempReturnValue := nil;
+      TempArgs        := nil;
+      TempException   := '';
+
+      if (arguments <> nil) and (argumentsCount > 0) then
+        begin
+          SetLength(TempArgs, argumentsCount);
+
+          i := 0;
+          while (i < argumentsCount) do
+            begin
+              TempArgs[i] := TCefv8ValueRef.UnWrap(arguments^[i]);
+              inc(i);
+            end;
+        end;
+
+      Result := Ord(TCefv8HandlerOwn(TempObject).Execute(CefString(name),
+                                                         TempRecObject,
+                                                         TempArgs,
+                                                         TempReturnValue,
+                                                         TempException));
+
+      retval := CefGetData(TempReturnValue);
+
+      if (exception <> nil) then
+        begin
+          CefStringFree(exception);
+          exception^ := CefStringAlloc(TempException);
+        end;
+    finally
+      i := 0;
+      while (i < argumentsCount) do
+        begin
+          TempArgs[i] := nil;
+          inc(i);
+        end;
+
+      TempRecObject   := nil;
+      TempReturnValue := nil;
+    end;
 end;
 
-function TCefv8HandlerRef.Execute(const name: ustring; const obj: ICefv8Value;
-  const arguments: TCefv8ValueArray; var retval: ICefv8Value;
-  var exception: ustring): Boolean;
+function TCefv8HandlerRef.Execute(const name      : ustring;
+                                  const object_   : ICefv8Value;
+                                  const arguments : TCefv8ValueArray;
+                                  var   retval    : ICefv8Value;
+                                  var   exception : ustring): Boolean;
 var
-  args: array of PCefV8Value;
-  i: Integer;
-  ret: PCefV8Value;
-  exc: TCefString;
-  n: TCefString;
+  TempArgs        : array of PCefV8Value;
+  TempLen, i      : integer;
+  TempReturnValue : PCefV8Value;
+  TempException   : TCefString;
+  TempName        : TCefString;
 begin
-  SetLength(args, Length(arguments));
-  for i := 0 to Length(arguments) - 1 do
-    args[i] := CefGetData(arguments[i]);
-  ret := nil;
-  FillChar(exc, SizeOf(exc), 0);
-  n := CefString(name);
-  Result := PCefv8Handler(FData)^.execute(PCefv8Handler(FData), @n,
-    CefGetData(obj), Length(arguments), @args, ret, exc) <> 0;
-  retval := TCefv8ValueRef.UnWrap(ret);
-  exception := CefStringClearAndGet(exc);
+  i       := 0;
+  TempLen := Length(arguments);
+
+  SetLength(TempArgs, TempLen);
+
+  while (i < TempLen) do
+    begin
+      TempArgs[i] := CefGetData(arguments[i]);
+      inc(i);
+    end;
+
+  CefStringInitialize(@TempException);
+
+  TempReturnValue := nil;
+  TempName        := CefString(name);
+  Result          := PCefv8Handler(FData)^.execute(PCefv8Handler(FData), @TempName, CefGetData(object_), TempLen, @TempArgs, TempReturnValue, @TempException) <> 0;
+  retval          := TCefv8ValueRef.UnWrap(TempReturnValue);
+  exception       := CefStringClearAndGet(@TempException);
 end;
 
 class function TCefv8HandlerRef.UnWrap(data: Pointer): ICefv8Handler;
 begin
-  if data <> nil then
-    Result := Create(data) as ICefv8Handler else
+  if (data <> nil) then
+    Result := Create(data) as ICefv8Handler
+   else
     Result := nil;
 end;
 
@@ -158,10 +210,10 @@ constructor TCefv8HandlerOwn.Create;
 begin
   inherited CreateData(SizeOf(TCefv8Handler));
 
-  with PCefv8Handler(FData)^ do execute := cef_v8_handler_execute;
+  PCefv8Handler(FData)^.execute := {$IFDEF FPC}@{$ENDIF}cef_v8_handler_execute;
 end;
 
-function TCefv8HandlerOwn.Execute(const name: ustring; const obj: ICefv8Value; const arguments: TCefv8ValueArray; var retval: ICefv8Value; var exception: ustring): Boolean;
+function TCefv8HandlerOwn.Execute(const name: ustring; const object_: ICefv8Value; const arguments: TCefv8ValueArray; var retval: ICefv8Value; var exception: ustring): Boolean;
 begin
   Result := False;
 end;
@@ -326,9 +378,9 @@ function TCefRTTIExtension.GetValue(pi: PTypeInfo; const v: ICefv8Value; var ret
 
   function ProcessVariant: Boolean;
   var
-    vr: Variant;
-    i: Integer;
-    vl: TValue;
+    vr   : Variant;
+    i, j : Integer;
+    vl   : TValue;
   begin
     VarClear(vr);
     if v.IsString then vr := v.GetStringValue else
@@ -339,14 +391,20 @@ function TCefRTTIExtension.GetValue(pi: PTypeInfo; const v: ICefv8Value; var ret
     if v.IsNull then TVarData(vr).VType := varNull else
     if v.IsArray then
       begin
-        vr := VarArrayCreate([0, v.GetArrayLength], varVariant);
-        for i := 0 to v.GetArrayLength - 1 do
-        begin
-          if not GetValue(pi, v.GetValueByIndex(i), vl) then Exit(False);
-          VarArrayPut(vr, vl.AsVariant, i);
-        end;
+        i  := 0;
+        j  := v.GetArrayLength;
+        vr := VarArrayCreate([0, j], varVariant);
+
+        while (i < j) do
+          begin
+            if not GetValue(pi, v.GetValueByIndex(i), vl) then Exit(False);
+            VarArrayPut(vr, vl.AsVariant, i);
+            inc(i);
+          end;
+
       end else
       Exit(False);
+
     TValue.Make(@vr, pi, ret);
     Result := True;
   end;
@@ -717,11 +775,21 @@ begin
   Result := True;
 end;
 
-class procedure TCefRTTIExtension.Register(const name: string; const value: TValue; SyncMainThread: Boolean);
+class function TCefRTTIExtension.Register(const name: ustring; const value: TValue; SyncMainThread: Boolean) : boolean;
+var
+  TempCode    : ustring;
+  TempHandler : ICefv8Handler;
 begin
-  CefRegisterExtension(name,
-    format('__defineSetter__(''%s'', function(v){native function $s();$s(v)});__defineGetter__(''%0:s'', function(){native function $g();return $g()});', [name]),
-    TCefRTTIExtension.Create(value, SyncMainThread) as ICefv8Handler);
+  try
+    TempHandler := TCefRTTIExtension.Create(value, SyncMainThread);
+    TempCode    := format('this.__defineSetter__(''%s'', function(v){native function $s();$s(v)});' +
+                          'this.__defineGetter__(''%0:s'', function(){native function $g();return $g()});',
+                          [name]);
+
+    Result := CefRegisterExtension(name, TempCode, TempHandler);
+  finally
+    TempHandler := nil;
+  end;
 end;
 
 {$IFDEF CPUX64}
@@ -737,9 +805,11 @@ begin
 end;
 {$ENDIF}
 
-function TCefRTTIExtension.Execute(const name: ustring; const obj: ICefv8Value;
-  const arguments: TCefv8ValueArray; var retval: ICefv8Value;
-  var exception: ustring): Boolean;
+function TCefRTTIExtension.Execute(const name      : ustring;
+                                   const object_   : ICefv8Value;
+                                   const arguments : TCefv8ValueArray;
+                                   var   retval    : ICefv8Value;
+                                   var   exception : ustring): Boolean;
 var
   p: PChar;
   ud: ICefv8Value;
@@ -757,9 +827,9 @@ begin
   Result := True;
   p := PChar(name);
   m := nil;
-  if obj <> nil then
+  if object_ <> nil then
   begin
-    ud := obj.GetUserData;
+    ud := object_.GetUserData;
     if ud <> nil then
     begin
 {$IFDEF CPUX64}

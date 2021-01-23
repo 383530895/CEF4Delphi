@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,10 +37,12 @@
 
 unit uCEFWindowParent;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
@@ -48,72 +50,36 @@ interface
 
 uses
   {$IFDEF DELPHI16_UP}
-  WinApi.Windows, WinApi.Messages, System.Classes, Vcl.Controls,
+    {$IFDEF MSWINDOWS}WinApi.Windows, WinApi.Messages,{$ENDIF} System.Classes, Vcl.Controls, Vcl.Graphics,
   {$ELSE}
-  Windows, Messages, Classes, Controls,
+    {$IFDEF MSWINDOWS}Windows,{$ENDIF} Classes, Forms, Controls, Graphics,
+    {$IFDEF FPC}
+    LCLProc, LCLType, LCLIntf, LResources, LMessages, InterfaceBase,
+    {$ELSE}
+    Messages,
+    {$ENDIF}
   {$ENDIF}
-  uCEFTypes, uCEFInterfaces;
+  uCEFWinControl, uCEFTypes, uCEFInterfaces;
 
 type
-  TCEFWindowParent = class(TWinControl)
+  {$IFNDEF FPC}{$IFDEF DELPHI16_UP}[ComponentPlatformsAttribute(pidWin32 or pidWin64)]{$ENDIF}{$ENDIF}
+  TCEFWindowParent = class(TCEFWinControl)
     protected
-      function  GetChildWindowHandle : THandle; virtual;
-
+      {$IFDEF MSWINDOWS}
       procedure WndProc(var aMessage: TMessage); override;
-      procedure Resize; override;
-
-    public
-      procedure UpdateSize;
-      property  ChildWindowHandle : THandle   read GetChildWindowHandle;
-
-    published
-      property  Align;
-      property  Anchors;
-      property  Color;
-      property  Constraints;
-      property  TabStop;
-      property  TabOrder;
-      property  Visible;
+      {$ENDIF}
   end;
+
+{$IFDEF FPC}
+procedure Register;
+{$ENDIF}
 
 implementation
 
 uses
   uCEFMiscFunctions, uCEFClient, uCEFConstants;
 
-function TCEFWindowParent.GetChildWindowHandle : THandle;
-begin
-  Result := GetWindow(Handle, GW_CHILD);
-end;
-
-procedure TCEFWindowParent.Resize;
-begin
-  inherited Resize;
-
-  UpdateSize;
-end;
-
-procedure TCEFWindowParent.UpdateSize;
-var
-  TempRect : TRect;
-  hdwp: THandle;
-  TempHandle : THandle;
-begin
-  TempHandle := ChildWindowHandle;
-  if (TempHandle = 0) then Exit;
-
-  TempRect := GetClientRect;
-  hdwp     := BeginDeferWindowPos(1);
-
-  try
-    hdwp := DeferWindowPos(hdwp, TempHandle, HWND_TOP,
-                           TempRect.left, TempRect.top, TempRect.right - TempRect.left, TempRect.bottom - TempRect.top,
-                           SWP_NOZORDER);
-  finally
-    EndDeferWindowPos(hdwp);
-  end;
-end;
-
+{$IFDEF MSWINDOWS}
 procedure TCEFWindowParent.WndProc(var aMessage: TMessage);
 var
   TempHandle : THandle;
@@ -127,10 +93,7 @@ begin
       end;
 
     WM_ERASEBKGND:
-      begin
-        TempHandle := ChildWindowHandle;
-        if (csDesigning in ComponentState) or (TempHandle = 0) then inherited WndProc(aMessage);
-      end;
+      if (ChildWindowHandle = 0) then inherited WndProc(aMessage);
 
     CM_WANTSPECIALKEY:
       if not(TWMKey(aMessage).CharCode in [VK_LEFT .. VK_DOWN, VK_RETURN, VK_ESCAPE]) then
@@ -143,5 +106,14 @@ begin
     else inherited WndProc(aMessage);
   end;
 end;
+{$ENDIF}
+
+{$IFDEF FPC}
+procedure Register;
+begin
+  {$I res/tcefwindowparent.lrs}
+  RegisterComponents('Chromium', [TCEFWindowParent]);
+end;
+{$ENDIF}
 
 end.

@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,10 +37,12 @@
 
 unit uCEFX509CertPrincipal;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
@@ -62,10 +64,10 @@ type
       function  GetLocalityName: ustring;
       function  GetStateOrProvinceName: ustring;
       function  GetCountryName: ustring;
-      procedure GetStreetAddresses(addresses: TStrings);
-      procedure GetOrganizationNames(names: TStrings);
-      procedure GetOrganizationUnitNames(names: TStrings);
-      procedure GetDomainComponents(components: TStrings);
+      procedure GetStreetAddresses(const addresses: TStrings);
+      procedure GetOrganizationNames(const names: TStrings);
+      procedure GetOrganizationUnitNames(const names: TStrings);
+      procedure GetDomainComponents(const components: TStrings);
 
     public
       class function UnWrap(data: Pointer): ICefX509CertPrincipal;
@@ -75,127 +77,83 @@ implementation
 
 uses
   {$IFDEF DELPHI16_UP}
-  WinApi.Windows, System.SysUtils,
+    {$IFDEF MSWINDOWS}WinApi.Windows,{$ENDIF} System.SysUtils,
   {$ELSE}
-  Windows, SysUtils,
+    {$IFDEF MSWINDOWS}Windows,{$ENDIF} SysUtils,
   {$ENDIF}
-  uCEFMiscFunctions, uCEFLibFunctions, uCEFApplication;
+  uCEFMiscFunctions, uCEFStringList;
 
 function TCefX509CertPrincipalRef.GetDisplayName: ustring;
 begin
-  Result := CefStringFreeAndGet(PCefX509CertPrincipal(FData).get_display_name(FData));
+  Result := CefStringFreeAndGet(PCefX509CertPrincipal(FData)^.get_display_name(PCefX509CertPrincipal(FData)));
 end;
 
 function TCefX509CertPrincipalRef.GetCommonName: ustring;
 begin
-  Result := CefStringFreeAndGet(PCefX509CertPrincipal(FData).get_common_name(FData));
+  Result := CefStringFreeAndGet(PCefX509CertPrincipal(FData)^.get_common_name(PCefX509CertPrincipal(FData)));
 end;
 
 function TCefX509CertPrincipalRef.GetLocalityName: ustring;
 begin
-  Result := CefStringFreeAndGet(PCefX509CertPrincipal(FData).get_locality_name(FData));
+  Result := CefStringFreeAndGet(PCefX509CertPrincipal(FData)^.get_locality_name(PCefX509CertPrincipal(FData)));
 end;
 
 function TCefX509CertPrincipalRef.GetStateOrProvinceName: ustring;
 begin
-  Result := CefStringFreeAndGet(PCefX509CertPrincipal(FData).get_state_or_province_name(FData));
+  Result := CefStringFreeAndGet(PCefX509CertPrincipal(FData)^.get_state_or_province_name(PCefX509CertPrincipal(FData)));
 end;
 
 function TCefX509CertPrincipalRef.GetCountryName: ustring;
 begin
-  Result := CefStringFreeAndGet(PCefX509CertPrincipal(FData).get_country_name(FData));
+  Result := CefStringFreeAndGet(PCefX509CertPrincipal(FData)^.get_country_name(PCefX509CertPrincipal(FData)));
 end;
 
-procedure TCefX509CertPrincipalRef.GetStreetAddresses(addresses: TStrings);
+procedure TCefX509CertPrincipalRef.GetStreetAddresses(const addresses: TStrings);
 var
-  TempList : TCefStringList;
+  TempSL : ICefStringList;
 begin
-  TempList := nil;
-
-  try
-    try
-      if (addresses <> nil) then
-        begin
-          TempList := cef_string_list_alloc;
-          PCefX509CertPrincipal(FData).get_street_addresses(FData, TempList);
-          CefStringListToStringList(TempList, addresses);
-        end;
-    except
-      on e : exception do
-        if CustomExceptionHandler('TCefX509CertPrincipalRef.GetStreetAddresses', e) then raise;
+  if (addresses <> nil) then
+    begin
+      TempSL := TCefStringListOwn.Create;
+      PCefX509CertPrincipal(FData)^.get_street_addresses(PCefX509CertPrincipal(FData), TempSL.Handle);
+      TempSL.CopyToStrings(addresses);
     end;
-  finally
-    if (TempList <> nil) then cef_string_list_free(TempList);
-  end;
 end;
 
-procedure TCefX509CertPrincipalRef.GetOrganizationNames(names: TStrings);
+procedure TCefX509CertPrincipalRef.GetOrganizationNames(const names: TStrings);
 var
-  TempList : TCefStringList;
+  TempSL : ICefStringList;
 begin
-  TempList := nil;
-
-  try
-    try
-      if (names <> nil) then
-        begin
-          TempList := cef_string_list_alloc;
-          PCefX509CertPrincipal(FData).get_organization_names(FData, TempList);
-          CefStringListToStringList(TempList, names);
-        end;
-    except
-      on e : exception do
-        if CustomExceptionHandler('TCefX509CertPrincipalRef.GetOrganizationNames', e) then raise;
+  if (names <> nil) then
+    begin
+      TempSL := TCefStringListOwn.Create;
+      PCefX509CertPrincipal(FData)^.get_organization_names(PCefX509CertPrincipal(FData), TempSL.Handle);
+      TempSL.CopyToStrings(names);
     end;
-  finally
-    if (TempList <> nil) then cef_string_list_free(TempList);
-  end;
 end;
 
-procedure TCefX509CertPrincipalRef.GetOrganizationUnitNames(names: TStrings);
+procedure TCefX509CertPrincipalRef.GetOrganizationUnitNames(const names: TStrings);
 var
-  TempList : TCefStringList;
+  TempSL : ICefStringList;
 begin
-  TempList := nil;
-
-  try
-    try
-      if (names <> nil) then
-        begin
-          TempList := cef_string_list_alloc;
-          PCefX509CertPrincipal(FData).get_organization_unit_names(FData, TempList);
-          CefStringListToStringList(TempList, names);
-        end;
-    except
-      on e : exception do
-        if CustomExceptionHandler('TCefX509CertPrincipalRef.GetOrganizationUnitNames', e) then raise;
+  if (names <> nil) then
+    begin
+      TempSL := TCefStringListOwn.Create;
+      PCefX509CertPrincipal(FData)^.get_organization_unit_names(PCefX509CertPrincipal(FData), TempSL.Handle);
+      TempSL.CopyToStrings(names);
     end;
-  finally
-    if (TempList <> nil) then cef_string_list_free(TempList);
-  end;
 end;
 
-procedure TCefX509CertPrincipalRef.GetDomainComponents(components: TStrings);
+procedure TCefX509CertPrincipalRef.GetDomainComponents(const components: TStrings);
 var
-  TempList : TCefStringList;
+  TempSL : ICefStringList;
 begin
-  TempList := nil;
-
-  try
-    try
-      if (components <> nil) then
-        begin
-          TempList := cef_string_list_alloc;
-          PCefX509CertPrincipal(FData).get_domain_components(FData, TempList);
-          CefStringListToStringList(TempList, components);
-        end;
-    except
-      on e : exception do
-        if CustomExceptionHandler('TCefX509CertPrincipalRef.GetDomainComponents', e) then raise;
+  if (components <> nil) then
+    begin
+      TempSL := TCefStringListOwn.Create;
+      PCefX509CertPrincipal(FData)^.get_domain_components(PCefX509CertPrincipal(FData), TempSL.Handle);
+      TempSL.CopyToStrings(components);
     end;
-  finally
-    if (TempList <> nil) then cef_string_list_free(TempList);
-  end;
 end;
 
 class function TCefX509CertPrincipalRef.UnWrap(data: Pointer): ICefX509CertPrincipal;

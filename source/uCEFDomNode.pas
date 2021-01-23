@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,47 +37,55 @@
 
 unit uCEFDomNode;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
 interface
 
 uses
+  {$IFDEF DELPHI16_UP}
+    {$IFDEF MSWINDOWS}WinApi.Windows,{$ENDIF} System.Classes, System.SysUtils,
+  {$ELSE}
+    {$IFDEF MSWINDOWS}Windows,{$ENDIF} Classes, SysUtils,
+  {$ENDIF}
   uCEFBaseRefCounted, uCEFInterfaces, uCEFTypes;
 
 type
   TCefDomNodeRef = class(TCefBaseRefCountedRef, ICefDomNode)
     protected
-      function GetType: TCefDomNodeType;
-      function IsText: Boolean;
-      function IsElement: Boolean;
-      function IsEditable: Boolean;
-      function IsFormControlElement: Boolean;
-      function GetFormControlElementType: ustring;
-      function IsSame(const that: ICefDomNode): Boolean;
-      function GetName: ustring;
-      function GetValue: ustring;
-      function SetValue(const value: ustring): Boolean;
-      function GetAsMarkup: ustring;
-      function GetDocument: ICefDomDocument;
-      function GetParent: ICefDomNode;
-      function GetPreviousSibling: ICefDomNode;
-      function GetNextSibling: ICefDomNode;
-      function HasChildren: Boolean;
-      function GetFirstChild: ICefDomNode;
-      function GetLastChild: ICefDomNode;
-      function GetElementTagName: ustring;
-      function HasElementAttributes: Boolean;
-      function HasElementAttribute(const attrName: ustring): Boolean;
-      function GetElementAttribute(const attrName: ustring): ustring;
-      procedure GetElementAttributes(const attrMap: ICefStringMap);
-      function SetElementAttribute(const attrName, value: ustring): Boolean;
-      function GetElementInnerText: ustring;
-      function GetElementBounds: TCefRect;
+      function  GetType: TCefDomNodeType;
+      function  IsText: Boolean;
+      function  IsElement: Boolean;
+      function  IsEditable: Boolean;
+      function  IsFormControlElement: Boolean;
+      function  GetFormControlElementType: ustring;
+      function  IsSame(const that: ICefDomNode): Boolean;
+      function  GetName: ustring;
+      function  GetValue: ustring;
+      function  SetValue(const value: ustring): Boolean;
+      function  GetAsMarkup: ustring;
+      function  GetDocument: ICefDomDocument;
+      function  GetParent: ICefDomNode;
+      function  GetPreviousSibling: ICefDomNode;
+      function  GetNextSibling: ICefDomNode;
+      function  HasChildren: Boolean;
+      function  GetFirstChild: ICefDomNode;
+      function  GetLastChild: ICefDomNode;
+      function  GetElementTagName: ustring;
+      function  HasElementAttributes: Boolean;
+      function  HasElementAttribute(const attrName: ustring): Boolean;
+      function  GetElementAttribute(const attrName: ustring): ustring;
+      procedure GetElementAttributes(const attrMap: ICefStringMap); overload;
+      procedure GetElementAttributes(var attrList: TStrings); overload;
+      function  SetElementAttribute(const attrName, value: ustring): Boolean;
+      function  GetElementInnerText: ustring;
+      function  GetElementBounds: TCefRect;
 
     public
       class function UnWrap(data: Pointer): ICefDomNode;
@@ -86,7 +94,7 @@ type
 implementation
 
 uses
-  uCEFMiscFunctions, uCEFDomDocument;
+  uCEFMiscFunctions, uCEFDomDocument, uCEFStringMap;
 
 function TCefDomNodeRef.GetAsMarkup: ustring;
 begin
@@ -100,15 +108,59 @@ end;
 
 function TCefDomNodeRef.GetElementAttribute(const attrName: ustring): ustring;
 var
-  p: TCefString;
+  TempName : TCefString;
 begin
-  p := CefString(attrName);
-  Result := CefStringFreeAndGet(PCefDomNode(FData)^.get_element_attribute(PCefDomNode(FData), @p));
+  TempName := CefString(attrName);
+  Result   := CefStringFreeAndGet(PCefDomNode(FData)^.get_element_attribute(PCefDomNode(FData), @TempName));
 end;
 
 procedure TCefDomNodeRef.GetElementAttributes(const attrMap: ICefStringMap);
 begin
   PCefDomNode(FData)^.get_element_attributes(PCefDomNode(FData), attrMap.Handle);
+end;
+
+procedure TCefDomNodeRef.GetElementAttributes(var attrList: TStrings);
+var
+  TempStrMap : ICefStringMap;
+  i, j : NativeUInt;
+  TempKey, TempValue : ustring;
+begin
+  TempStrMap := nil;
+
+  try
+    try
+      if (attrList <> nil) then
+        begin
+          TempStrMap := TCefStringMapOwn.Create;
+          PCefDomNode(FData)^.get_element_attributes(PCefDomNode(FData), TempStrMap.Handle);
+
+          i := 0;
+          j := TempStrMap.Size;
+
+          while (i < j) do
+            begin
+              TempKey   := TempStrMap.Key[i];
+              TempValue := TempStrMap.Value[i];
+
+              if (length(TempKey) > 0) and (length(TempValue) > 0) then
+                attrList.Add(TempKey + attrList.NameValueSeparator + TempValue)
+               else
+                if (length(TempKey) > 0) then
+                  attrList.Add(TempKey)
+                 else
+                  if (length(TempValue) > 0) then
+                    attrList.Add(TempValue);
+
+              inc(i);
+            end;
+        end;
+    except
+      on e : exception do
+        if CustomExceptionHandler('TCefDomNodeRef.GetElementAttributes', e) then raise;
+    end;
+  finally
+    TempStrMap := nil;
+  end;
 end;
 
 function TCefDomNodeRef.GetElementInnerText: ustring;
@@ -178,10 +230,10 @@ end;
 
 function TCefDomNodeRef.HasElementAttribute(const attrName: ustring): Boolean;
 var
-  p: TCefString;
+  TempName : TCefString;
 begin
-  p := CefString(attrName);
-  Result := PCefDomNode(FData)^.has_element_attribute(PCefDomNode(FData), @p) <> 0;
+  TempName := CefString(attrName);
+  Result   := PCefDomNode(FData)^.has_element_attribute(PCefDomNode(FData), @TempName) <> 0;
 end;
 
 function TCefDomNodeRef.HasElementAttributes: Boolean;
@@ -214,28 +266,28 @@ begin
   Result := PCefDomNode(FData)^.is_text(PCefDomNode(FData)) <> 0;
 end;
 
-function TCefDomNodeRef.SetElementAttribute(const attrName,
-  value: ustring): Boolean;
+function TCefDomNodeRef.SetElementAttribute(const attrName, value: ustring): Boolean;
 var
-  p1, p2: TCefString;
+  TempName, TempValue : TCefString;
 begin
-  p1 := CefString(attrName);
-  p2 := CefString(value);
-  Result := PCefDomNode(FData)^.set_element_attribute(PCefDomNode(FData), @p1, @p2) <> 0;
+  TempName  := CefString(attrName);
+  TempValue := CefString(value);
+  Result    := PCefDomNode(FData)^.set_element_attribute(PCefDomNode(FData), @TempName, @TempValue) <> 0;
 end;
 
 function TCefDomNodeRef.SetValue(const value: ustring): Boolean;
 var
-  p: TCefString;
+  TempValue : TCefString;
 begin
-  p := CefString(value);
-  Result := PCefDomNode(FData)^.set_value(PCefDomNode(FData), @p) <> 0;
+  TempValue := CefString(value);
+  Result    := PCefDomNode(FData)^.set_value(PCefDomNode(FData), @TempValue) <> 0;
 end;
 
 class function TCefDomNodeRef.UnWrap(data: Pointer): ICefDomNode;
 begin
-  if data <> nil then
-    Result := Create(data) as ICefDomNode else
+  if (data <> nil) then
+    Result := Create(data) as ICefDomNode
+   else
     Result := nil;
 end;
 

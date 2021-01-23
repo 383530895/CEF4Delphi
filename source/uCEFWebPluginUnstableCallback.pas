@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,10 +37,12 @@
 
 unit uCEFWebPluginUnstableCallback;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
@@ -50,8 +52,6 @@ uses
   uCEFBaseRefCounted, uCEFInterfaces, uCEFTypes;
 
 type
-  TCefWebPluginIsUnstableProc = {$IFDEF DELPHI12_UP}reference to{$ENDIF} procedure(const path: ustring; unstable: Boolean);
-
   TCefWebPluginUnstableCallbackOwn = class(TCefBaseRefCountedOwn, ICefWebPluginUnstableCallback)
     protected
       procedure IsUnstable(const path: ustring; unstable: Boolean); virtual;
@@ -77,9 +77,14 @@ uses
 procedure cef_web_plugin_unstable_callback_is_unstable(self: PCefWebPluginUnstableCallback;
                                                        const path: PCefString;
                                                        unstable: Integer); stdcall;
+var
+  TempObject : TObject;
 begin
-  with TCefWebPluginUnstableCallbackOwn(CefGetObject(self)) do
-    IsUnstable(CefString(path), unstable <> 0);
+  TempObject := CefGetObject(self);
+
+  if (TempObject <> nil) and (TempObject is TCefWebPluginUnstableCallbackOwn) then
+    TCefWebPluginUnstableCallbackOwn(TempObject).IsUnstable(CefString(path),
+                                                            unstable <> 0);
 end;
 
 // TCefWebPluginUnstableCallbackOwn
@@ -88,7 +93,7 @@ constructor TCefWebPluginUnstableCallbackOwn.Create;
 begin
   inherited CreateData(SizeOf(TCefWebPluginUnstableCallback));
 
-  PCefWebPluginUnstableCallback(FData).is_unstable := cef_web_plugin_unstable_callback_is_unstable;
+  PCefWebPluginUnstableCallback(FData)^.is_unstable := {$IFDEF FPC}@{$ENDIF}cef_web_plugin_unstable_callback_is_unstable;
 end;
 
 procedure TCefWebPluginUnstableCallbackOwn.IsUnstable(const path: ustring; unstable: Boolean);
@@ -100,6 +105,8 @@ end;
 
 constructor TCefFastWebPluginUnstableCallback.Create(const callback: TCefWebPluginIsUnstableProc);
 begin
+  inherited Create;
+
   FCallback := callback;
 end;
 

@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,10 +37,12 @@
 
 unit uCEFAccessibilityHandler;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
@@ -50,6 +52,8 @@ uses
   uCEFBaseRefCounted, uCEFInterfaces, uCEFTypes, uCEFChromiumEvents;
 
 type
+  TOnAccessibilityEvent = procedure(Sender: TObject; const value: ICefValue) of object;
+
   TCEFAccessibilityHandlerOwn = class(TCefBaseRefCountedOwn, ICefAccessibilityHandler)
     protected
       procedure OnAccessibilityTreeChange(const value: ICefValue); virtual;
@@ -80,15 +84,23 @@ uses
   uCEFMiscFunctions, uCEFValue;
 
 procedure cef_accessibility_handler_on_accessibility_tree_change(self: PCefAccessibilityHandler; value: PCefValue); stdcall;
+var
+  TempObject  : TObject;
 begin
-  with TCEFAccessibilityHandlerOwn(CefGetObject(self)) do
-    OnAccessibilityTreeChange(TCefValueRef.UnWrap(value));
+  TempObject  := CefGetObject(self);
+
+  if (TempObject <> nil) and (TempObject is TCEFAccessibilityHandlerOwn) then
+    TCEFAccessibilityHandlerOwn(TempObject).OnAccessibilityTreeChange(TCefValueRef.UnWrap(value));
 end;
 
 procedure cef_accessibility_handler_on_accessibility_location_change(self: PCefAccessibilityHandler; value: PCefValue); stdcall;
+var
+  TempObject  : TObject;
 begin
-  with TCEFAccessibilityHandlerOwn(CefGetObject(self)) do
-    OnAccessibilityLocationChange(TCefValueRef.UnWrap(value));
+  TempObject  := CefGetObject(self);
+
+  if (TempObject <> nil) and (TempObject is TCEFAccessibilityHandlerOwn) then
+    TCEFAccessibilityHandlerOwn(TempObject).OnAccessibilityLocationChange(TCefValueRef.UnWrap(value));
 end;
 
 constructor TCEFAccessibilityHandlerOwn.Create;
@@ -97,8 +109,8 @@ begin
 
   with PCEFAccessibilityHandler(FData)^ do
     begin
-      on_accessibility_tree_change     := cef_accessibility_handler_on_accessibility_tree_change;
-      on_accessibility_location_change := cef_accessibility_handler_on_accessibility_location_change;
+      on_accessibility_tree_change     := {$IFDEF FPC}@{$ENDIF}cef_accessibility_handler_on_accessibility_tree_change;
+      on_accessibility_location_change := {$IFDEF FPC}@{$ENDIF}cef_accessibility_handler_on_accessibility_location_change;
     end;
 end;
 

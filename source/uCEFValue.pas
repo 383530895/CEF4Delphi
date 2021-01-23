@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,10 +37,12 @@
 
 unit uCEFValue;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
@@ -67,7 +69,7 @@ type
       function GetDictionary: ICefDictionaryValue;
       function GetList: ICefListValue;
       function SetNull: Boolean;
-      function SetBool(value: Integer): Boolean;
+      function SetBool(value: boolean): Boolean;
       function SetInt(value: Integer): Boolean;
       function SetDouble(value: Double): Boolean;
       function SetString(const value: ustring): Boolean;
@@ -87,72 +89,72 @@ uses
 
 function TCefValueRef.Copy: ICefValue;
 begin
-  Result := UnWrap(PCefValue(FData).copy(FData));
+  Result := UnWrap(PCefValue(FData)^.copy(PCefValue(FData)));
 end;
 
 function TCefValueRef.GetBinary: ICefBinaryValue;
 begin
-  Result := TCefBinaryValueRef.UnWrap(PCefValue(FData).get_binary(FData));
+  Result := TCefBinaryValueRef.UnWrap(PCefValue(FData)^.get_binary(PCefValue(FData)));
 end;
 
 function TCefValueRef.GetBool: Boolean;
 begin
-  Result := PCefValue(FData).get_bool(FData) <> 0;
+  Result := PCefValue(FData)^.get_bool(PCefValue(FData)) <> 0;
 end;
 
 function TCefValueRef.GetDictionary: ICefDictionaryValue;
 begin
-  Result := TCefDictionaryValueRef.UnWrap(PCefValue(FData).get_dictionary(FData));
+  Result := TCefDictionaryValueRef.UnWrap(PCefValue(FData)^.get_dictionary(PCefValue(FData)));
 end;
 
 function TCefValueRef.GetDouble: Double;
 begin
-  Result := PCefValue(FData).get_double(FData);
+  Result := PCefValue(FData)^.get_double(PCefValue(FData));
 end;
 
 function TCefValueRef.GetInt: Integer;
 begin
-  Result := PCefValue(FData).get_int(FData);
+  Result := PCefValue(FData)^.get_int(PCefValue(FData));
 end;
 
 function TCefValueRef.GetList: ICefListValue;
 begin
-  Result := TCefListValueRef.UnWrap(PCefValue(FData).get_list(FData));
+  Result := TCefListValueRef.UnWrap(PCefValue(FData)^.get_list(PCefValue(FData)));
 end;
 
 function TCefValueRef.GetString: ustring;
 begin
-  Result := CefStringFreeAndGet(PCefValue(FData).get_string(FData));
+  Result := CefStringFreeAndGet(PCefValue(FData)^.get_string(PCefValue(FData)));
 end;
 
 function TCefValueRef.GetType: TCefValueType;
 begin
-  Result := PCefValue(FData).get_type(FData);
+  Result := PCefValue(FData)^.get_type(PCefValue(FData));
 end;
 
 function TCefValueRef.IsEqual(const that: ICefValue): Boolean;
 begin
-  Result := PCefValue(FData).is_equal(FData, CefGetData(that)) <> 0;
+  Result := PCefValue(FData)^.is_equal(PCefValue(FData), CefGetData(that)) <> 0;
 end;
 
 function TCefValueRef.IsOwned: Boolean;
 begin
-  Result := PCefValue(FData).is_owned(FData) <> 0;
+  Result := PCefValue(FData)^.is_owned(PCefValue(FData)) <> 0;
 end;
 
 function TCefValueRef.IsReadOnly: Boolean;
 begin
-  Result := PCefValue(FData).is_read_only(FData) <> 0;
+  Result := PCefValue(FData)^.is_read_only(PCefValue(FData)) <> 0;
 end;
 
 function TCefValueRef.IsSame(const that: ICefValue): Boolean;
 begin
-  Result := PCefValue(FData).is_same(FData, CefGetData(that)) <> 0;
+  Result := PCefValue(FData)^.is_same(PCefValue(FData), CefGetData(that)) <> 0;
 end;
 
 function TCefValueRef.IsValid: Boolean;
 begin
-  Result := PCefValue(FData).is_valid(FData) <> 0;
+  Result := PCefValue(FData)^.is_valid(PCefValue(FData)) <> 0;
 end;
 
 class function TCefValueRef.New: ICefValue;
@@ -162,51 +164,52 @@ end;
 
 function TCefValueRef.SetBinary(const value: ICefBinaryValue): Boolean;
 begin
-  Result := PCefValue(FData).set_binary(FData, CefGetData(value)) <> 0;
+  Result := PCefValue(FData)^.set_binary(PCefValue(FData), CefGetData(value)) <> 0;
 end;
 
-function TCefValueRef.SetBool(value: Integer): Boolean;
+function TCefValueRef.SetBool(value: boolean): Boolean;
 begin
-  Result := PCefValue(FData).set_bool(FData, value) <> 0;
+  Result := PCefValue(FData)^.set_bool(PCefValue(FData), ord(value)) <> 0;
 end;
 
 function TCefValueRef.SetDictionary(const value: ICefDictionaryValue): Boolean;
 begin
-  Result := PCefValue(FData).set_dictionary(FData, CefGetData(value)) <> 0;
+  Result := PCefValue(FData)^.set_dictionary(PCefValue(FData), CefGetData(value)) <> 0;
 end;
 
 function TCefValueRef.SetDouble(value: Double): Boolean;
 begin
-  Result := PCefValue(FData).set_double(FData, value) <> 0;
+  Result := PCefValue(FData)^.set_double(PCefValue(FData), value) <> 0;
 end;
 
 function TCefValueRef.SetInt(value: Integer): Boolean;
 begin
-  Result := PCefValue(FData).set_int(FData, value) <> 0;
+  Result := PCefValue(FData)^.set_int(PCefValue(FData), value) <> 0;
 end;
 
 function TCefValueRef.SetList(const value: ICefListValue): Boolean;
 begin
-  Result := PCefValue(FData).set_list(FData, CefGetData(value)) <> 0;
+  Result := PCefValue(FData)^.set_list(PCefValue(FData), CefGetData(value)) <> 0;
 end;
 
 function TCefValueRef.SetNull: Boolean;
 begin
-  Result := PCefValue(FData).set_null(FData) <> 0;
+  Result := PCefValue(FData)^.set_null(PCefValue(FData)) <> 0;
 end;
 
 function TCefValueRef.SetString(const value: ustring): Boolean;
 var
- s: TCefString;
+  TempValue : TCefString;
 begin
-  s := CefString(value);
-  Result := PCefValue(FData).set_string(FData, @s) <> 0;
+  TempValue := CefString(value);
+  Result    := PCefValue(FData)^.set_string(PCefValue(FData), @TempValue) <> 0;
 end;
 
 class function TCefValueRef.UnWrap(data: Pointer): ICefValue;
 begin
-  if data <> nil then
-    Result := Create(data) as ICefValue else
+  if (data <> nil) then
+    Result := Create(data) as ICefValue
+   else
     Result := nil;
 end;
 

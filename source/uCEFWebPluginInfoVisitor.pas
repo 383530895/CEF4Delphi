@@ -2,7 +2,7 @@
 // ***************************** CEF4Delphi *******************************
 // ************************************************************************
 //
-// CEF4Delphi is based on DCEF3 which uses CEF3 to embed a chromium-based
+// CEF4Delphi is based on DCEF3 which uses CEF to embed a chromium-based
 // browser in Delphi applications.
 //
 // The original license of DCEF3 still applies to CEF4Delphi.
@@ -10,7 +10,7 @@
 // For more information about CEF4Delphi visit :
 //         https://www.briskbard.com/index.php?lang=en&pageid=cef
 //
-//        Copyright © 2017 Salvador Díaz Fau. All rights reserved.
+//        Copyright © 2021 Salvador Diaz Fau. All rights reserved.
 //
 // ************************************************************************
 // ************ vvvv Original license and comments below vvvv *************
@@ -37,10 +37,12 @@
 
 unit uCEFWebPluginInfoVisitor;
 
-{$IFNDEF CPUX64}
-  {$ALIGN ON}
-  {$MINENUMSIZE 4}
+{$IFDEF FPC}
+  {$MODE OBJFPC}{$H+}
 {$ENDIF}
+
+{$IFNDEF CPUX64}{$ALIGN ON}{$ENDIF}
+{$MINENUMSIZE 4}
 
 {$I cef.inc}
 
@@ -58,8 +60,6 @@ type
       constructor Create; virtual;
   end;
 
-  TCefWebPluginInfoVisitorProc = {$IFDEF DELPHI12_UP}reference to{$ENDIF} function(const info: ICefWebPluginInfo; count, total: Integer): Boolean;
-
   TCefFastWebPluginInfoVisitor = class(TCefWebPluginInfoVisitorOwn)
     protected
       FProc: TCefWebPluginInfoVisitorProc;
@@ -75,35 +75,43 @@ implementation
 uses
   uCEFMiscFunctions, uCEFLibFunctions, uCEFWebPluginInfo;
 
-function cef_web_plugin_info_visitor_visit(self: PCefWebPluginInfoVisitor; info: PCefWebPluginInfo; count, total: Integer): Integer; stdcall;
+function cef_web_plugin_info_visitor_visit(self: PCefWebPluginInfoVisitor;
+                                           info: PCefWebPluginInfo;
+                                           count, total: Integer): Integer; stdcall;
+var
+  TempObject : TObject;
 begin
-  with TCefWebPluginInfoVisitorOwn(CefGetObject(self)) do
-    Result := Ord(Visit(TCefWebPluginInfoRef.UnWrap(info), count, total));
+  Result     := Ord(False);
+  TempObject := CefGetObject(self);
+
+  if (TempObject <> nil) and (TempObject is TCefWebPluginInfoVisitorOwn) then
+    Result := Ord(TCefWebPluginInfoVisitorOwn(TempObject).Visit(TCefWebPluginInfoRef.UnWrap(info),
+                                                                count,
+                                                                total));
 end;
 
 constructor TCefWebPluginInfoVisitorOwn.Create;
 begin
   inherited CreateData(SizeOf(TCefWebPluginInfoVisitor));
-  PCefWebPluginInfoVisitor(FData).visit := cef_web_plugin_info_visitor_visit;
+
+  PCefWebPluginInfoVisitor(FData)^.visit := {$IFDEF FPC}@{$ENDIF}cef_web_plugin_info_visitor_visit;
 end;
 
-function TCefWebPluginInfoVisitorOwn.Visit(const info: ICefWebPluginInfo; count,
-  total: Integer): Boolean;
+function TCefWebPluginInfoVisitorOwn.Visit(const info: ICefWebPluginInfo; count, total: Integer): Boolean;
 begin
   Result := False;
 end;
 
 // TCefFastWebPluginInfoVisitor
 
-constructor TCefFastWebPluginInfoVisitor.Create(
-  const proc: TCefWebPluginInfoVisitorProc);
+constructor TCefFastWebPluginInfoVisitor.Create(const proc: TCefWebPluginInfoVisitorProc);
 begin
   inherited Create;
+
   FProc := proc;
 end;
 
-function TCefFastWebPluginInfoVisitor.Visit(const info: ICefWebPluginInfo;
-  count, total: Integer): Boolean;
+function TCefFastWebPluginInfoVisitor.Visit(const info: ICefWebPluginInfo; count, total: Integer): Boolean;
 begin
   Result := FProc(info, count, total);
 end;

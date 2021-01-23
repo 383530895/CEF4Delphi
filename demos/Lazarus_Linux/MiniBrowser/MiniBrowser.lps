@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <Version Value="11"/>
+    <BuildModes Active="Default"/>
+    <Units Count="13">
+      <Unit0>
+        <Filename Value="MiniBrowser.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="26"/>
+        <CursorPos X="62" Y="52"/>
+        <UsageCount Value="22"/>
+        <Loaded Value="True"/>
+      </Unit0>
+      <Unit1>
+        <Filename Value="uMiniBrowser.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="MiniBrowserFrm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <IsVisibleTab Value="True"/>
+        <TopLine Value="187"/>
+        <CursorPos Y="352"/>
+        <FoldState Value=" TJmA1{32 pjZlg1@4 pmOoL1{D1q"/>
+        <UsageCount Value="22"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit1>
+      <Unit2>
+        <Filename Value="interfaces.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Interfaces"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="11" Y="9"/>
+        <UsageCount Value="22"/>
+      </Unit2>
+      <Unit3>
+        <Filename Value="uminibrowser.pas"/>
+        <ComponentName Value="Form1"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="uMiniBrowser"/>
+        <EditorIndex Value="-1"/>
+        <WindowIndex Value="-1"/>
+        <TopLine Value="29"/>
+        <CursorPos X="45" Y="36"/>
+        <UsageCount Value="20"/>
+      </Unit3>
+      <Unit4>
+        <Filename Value="/usr/share/lazarus/2.0.10/lcl/include/winapi.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="306"/>
+        <CursorPos Y="329"/>
+        <UsageCount Value="10"/>
+      </Unit4>
+      <Unit5>
+        <Filename Value="/usr/share/lazarus/2.0.10/lcl/include/application.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="420"/>
+        <CursorPos Y="439"/>
+        <UsageCount Value="10"/>
+      </Unit5>
+      <Unit6>
+        <Filename Value="/usr/share/lazarus/2.0.10/lcl/forms.pp"/>
+        <UnitName Value="Forms"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1462"/>
+        <CursorPos X="25" Y="1499"/>
+        <UsageCount Value="10"/>
+      </Unit6>
+      <Unit7>
+        <Filename Value="../../../source/uCEFChromium.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="130"/>
+        <CursorPos X="3" Y="146"/>
+        <UsageCount Value="10"/>
+      </Unit7>
+      <Unit8>
+        <Filename Value="../../../source/uCEFMiscFunctions.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="780"/>
+        <CursorPos X="70" Y="807"/>
+        <UsageCount Value="10"/>
+        <Bookmarks Count="1">
+          <Item0 X="68" Y="793" ID="2"/>
+        </Bookmarks>
+      </Unit8>
+      <Unit9>
+        <Filename Value="../../../source/uCEFChromiumCore.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1950"/>
+        <CursorPos X="71" Y="1975"/>
+        <UsageCount Value="10"/>
+        <Bookmarks Count="1">
+          <Item0 X="56" Y="1966" ID="1"/>
+        </Bookmarks>
+      </Unit9>
+      <Unit10>
+        <Filename Value="/usr/share/fpcsrc/3.2.0/packages/gtk2/src/gtk+/gtk/gtkwidget.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="82"/>
+        <CursorPos X="9" Y="105"/>
+        <UsageCount Value="10"/>
+      </Unit10>
+      <Unit11>
+        <Filename Value="../../../source/uCEFTypes.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1228"/>
+        <CursorPos X="53" Y="1251"/>
+        <UsageCount Value="10"/>
+      </Unit11>
+      <Unit12>
+        <Filename Value="../../../source/uCEFApplicationCore.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="220"/>
+        <UsageCount Value="10"/>
+      </Unit12>
+    </Units>
+    <OtherDefines Count="1">
+      <Define0 Value="UseCThreads"/>
+    </OtherDefines>
+    <JumpHistory Count="5" HistoryIndex="4">
+      <Position1>
+        <Filename Value="uMiniBrowser.pas"/>
+        <Caret Line="865" TopLine="829"/>
+      </Position1>
+      <Position2>
+        <Filename Value="uMiniBrowser.pas"/>
+        <Caret Line="158" Column="15" TopLine="137"/>
+      </Position2>
+      <Position3>
+        <Filename Value="uMiniBrowser.pas"/>
+        <Caret Line="863" Column="3" TopLine="829"/>
+      </Position3>
+      <Position4>
+        <Filename Value="uMiniBrowser.pas"/>
+        <Caret Line="849" Column="74" TopLine="829"/>
+      </Position4>
+      <Position5>
+        <Filename Value="uMiniBrowser.pas"/>
+        <Caret Line="222" Column="47" TopLine="210"/>
+      </Position5>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes Count="0" ActiveMode=""/>
+    </RunParams>
+  </ProjectSession>
+</CONFIG>
